@@ -60,6 +60,18 @@ def gerar_botao_timer(minutos, cor="#2E7D32", texto_personalizado=None):
     """
 
 
+def gerar_botao_metronomo():
+  """Gera o botão para abrir o atalho do Metronome Beats no iOS."""
+  url_metronomo = "shortcuts://run-shortcut?name=AbrirMetronomo"
+  return f"""
+    <a href="{url_metronomo}" class="custom-btn-link" style="text-decoration: none !important;">
+        <div style="background-color: #8E24AA; padding: 12px; text-align: center; border-radius: 8px; margin-top: 4px; margin-bottom: 12px;">
+            <span style="color: #FFFFFF !important; font-size: 16px; font-weight: bold; text-decoration: none !important;">🎼 Abrir Metrônomo (Metronome Beats)</span>
+        </div>
+    </a>
+    """
+
+
 st.set_page_config(page_title="Doutorado UFRGS", page_icon="🎸", layout="centered")
 
 # --- CSS GLOBAL PARA FORÇAR CORES DOS BOTÕES ---
@@ -136,7 +148,7 @@ with aba1:
 
   st.markdown("---")
 
-  st.subheader("⏱️ Temporizador Rápido (Nativo iOS)")
+  st.subheader("⏱️ Temporizador Rápido & Ferramentas (Nativo iOS)")
   col1, col2, col3, col4 = st.columns(4)
 
   with col1:
@@ -159,6 +171,9 @@ with aba1:
         gerar_botao_timer(5, cor="#C0392B", texto_personalizado="⚡ 5 min"),
         unsafe_allow_html=True,
     )
+
+  # Botão do Metrônomo
+  st.markdown(gerar_botao_metronomo(), unsafe_allow_html=True)
 
   with st.expander("⚙️ Tempo Personalizado"):
     mins_custom = st.number_input(
@@ -600,7 +615,7 @@ with aba4:
     data_l = carregar_dados_planilha("Leituras")
 
     with st.expander("➕ Adicionar Nova Leitura"):
-      novo_artigo = st.text_input("Título / Autor du Texto", key="input_novo_artigo")
+      novo_artigo = st.text_input("Título / Autor do Texto", key="input_novo_artigo")
       status_leitura = st.selectbox(
           "Status", opcoes_leitura, key="status_novo_artigo"
       )
