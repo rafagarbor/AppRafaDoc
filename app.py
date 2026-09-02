@@ -88,40 +88,49 @@ with aba1:
 
   st.markdown("---")
   st.subheader("📝 Reflexão (Diário iOS)")
-  resumo = st.text_input("Resumo da prática:")
+  resumo = st.text_area("Resumo da prática:")
 
   if resumo:
-    texto_fmt = resumo.replace(" ", "_")
-
     col_d1, col_d2 = st.columns(2)
 
     with col_d1:
-      # Insere tag #Violao no início da entrada
-      texto_violao = f"%23Violao_{texto_fmt}"
-      url_v = f"shortcuts://run-shortcut?name=RegistrarEstudo&input=text&text={texto_violao}"
-      html_v = f"""
-            <a href="{url_v}" target="_blank" style="text-decoration: none;">
-                <div style="background-color: #008CBA; color: white; padding: 12px; text-align: center; border-radius: 8px; font-size: 15px; font-weight: bold; margin-top: 10px;">
-                    🎸 Registrar em Violão
-                </div>
-            </a>
-            """
-      st.markdown(html_v, unsafe_allow_html=True)
+      texto_v = f"#Violao\n\n{resumo}"
+      if st.button("🎸 Preparar para Diário Violão"):
+        # Copia o texto limpo com tag para a Área de Transferência
+        st.write(
+            f"<script>navigator.clipboard.writeText({json.dumps(texto_v)});</script>",
+            unsafe_allow_html=True,
+        )
+        url_v = "shortcuts://run-shortcut?name=RegistrarEstudo"
+        st.markdown(
+            f'<a href="{url_v}" target="_blank" style="text-decoration:none;"><div'
+            ' style="background-color:#008CBA; color:white; padding:12px;'
+            " text-align:center; border-radius:8px; font-weight:bold;"
+            ' margin-top:8px;">🚀 Enviar ao Diário (Violão)</div></a>',
+            unsafe_allow_html=True,
+        )
 
     with col_d2:
-      # Insere tag #Doutorado no início da entrada
-      texto_doutorado = f"%23Doutorado_{texto_fmt}"
-      url_d = f"shortcuts://run-shortcut?name=RegistrarEstudo&input=text&text={texto_doutorado}"
-      html_d = f"""
-            <a href="{url_d}" target="_blank" style="text-decoration: none;">
-                <div style="background-color: #8E44AD; color: white; padding: 12px; text-align: center; border-radius: 8px; font-size: 15px; font-weight: bold; margin-top: 10px;">
-                    🎓 Registrar em Doutorado
-                </div>
-            </a>
-            """
-      st.markdown(html_d, unsafe_allow_html=True)
+      texto_d = f"#Doutorado\n\n{resumo}"
+      if st.button("🎓 Preparar para Diário Doutorado"):
+        # Copia o texto limpo com tag para a Área de Transferência
+        st.write(
+            f"<script>navigator.clipboard.writeText({json.dumps(texto_d)});</script>",
+            unsafe_allow_html=True,
+        )
+        url_d = "shortcuts://run-shortcut?name=RegistrarEstudo"
+        st.markdown(
+            f'<a href="{url_d}" target="_blank" style="text-decoration:none;"><div'
+            ' style="background-color:#8E44AD; color:white; padding:12px;'
+            " text-align:center; border-radius:8px; font-weight:bold;"
+            ' margin-top:8px;">🚀 Enviar ao Diário (Doutorado)</div></a>',
+            unsafe_allow_html=True,
+        )
   else:
-    st.info("Digite o resumo da sua prática acima para habilitar os botões de envio ao Diário.")
+    st.info(
+        "Digite o resumo da sua prática acima para habilitar as opções de envio"
+        " ao Diário."
+    )
 
 # --- ABA 2: REPERTÓRIO ---
 with aba2:
