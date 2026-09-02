@@ -1,4 +1,5 @@
 import base64
+from datetime import date
 import json
 import urllib.parse
 from google.oauth2.service_account import Credentials
@@ -42,6 +43,24 @@ aba1, aba2, aba3 = st.tabs(["⏱️ Timer/Estudos", "🎼 Repertório", "📚 Le
 
 # --- ABA 1: TIMER E REGISTROS ---
 with aba1:
+  # --- CONTAGEM REGRESSIVA PARA O RECITAL ---
+  # Define a data do recital (Ano, Mês, Dia) - Ajuste o ano/data conforme necessário
+  data_recital = date(2025, 12, 15)
+  hoje = date.today()
+  dias_restantes = (data_recital - hoje).days
+
+  if dias_restantes > 0:
+    st.info(
+        f"📅 **Faltam {dias_restantes} dias para o Recital!** ("
+        f"{data_recital.strftime('%d/%m/%Y')})"
+    )
+  elif dias_restantes == 0:
+    st.warning("🔥 **É HOJE! Dia do Recital!** 🔥")
+  else:
+    st.success(f"🎉 O recital foi realizado há {abs(dias_restantes)} dias!")
+
+  st.markdown("---")
+
   st.subheader("⏱️ Temporizador Rápido (Nativo iOS)")
   st.write("Selecione um bloco de tempo para disparar o timer no iPad:")
 
@@ -93,7 +112,6 @@ with aba1:
 
     with col_d1:
       texto_violao = f"#Violao\n\n{resumo}"
-      # Converte quebras de linha, espaços e acentos em formato seguro de URL
       texto_v_encoded = urllib.parse.quote(texto_violao)
       url_v = f"shortcuts://run-shortcut?name=RegistrarEstudo&input=text&text={texto_v_encoded}"
 
@@ -107,7 +125,6 @@ with aba1:
 
     with col_d2:
       texto_doutorado = f"#Doutorado\n\n{resumo}"
-      # Converte quebras de linha, espaços e acentos em formato seguro de URL
       texto_d_encoded = urllib.parse.quote(texto_doutorado)
       url_d = f"shortcuts://run-shortcut?name=RegistrarEstudo&input=text&text={texto_d_encoded}"
 
