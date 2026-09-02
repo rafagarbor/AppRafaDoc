@@ -5,6 +5,8 @@ import urllib.parse
 from google.oauth2.service_account import Credentials
 import gspread
 import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 
 
@@ -328,11 +330,32 @@ with aba3:
       df_agrupado["Horas"] = (df_agrupado["Minutos_Num"] / 60).round(1)
       df_agrupado.rename(columns={"Minutos_Num": "Minutos"}, inplace=True)
 
-      st.write("### 📈 Porcentagem de Tempo por Obra")
-      st.bar_chart(
-          data=df_agrupado.set_index("Obra")["Porcentagem (%)"],
-          use_container_width=True,
+      st.write("### 🍩 Distribuição Percentual por Obra")
+
+      # --- GRÁFICO DE ROSCA INTERATIVO (STYLE DASHBOARD PRO) ---
+      fig = px.pie(
+          df_agrupado,
+          values="Minutos",
+          names="Obra",
+          hole=0.6,  # Efeito Donut
+          color_discrete_sequence=px.colors.qualitative.Vivid,
       )
+
+      fig.update_traces(
+          textposition="inside",
+          textinfo="percent+label",
+          hovertemplate="<b>%{label}</b><br>Tempo: %{value} min<br>Porcentagem: %{percent}",
+          marker=dict(line=dict(color="#FFFFFF", width=2)),
+      )
+
+      fig.update_layout(
+          showlegend=True,
+          legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5),
+          margin=dict(t=20, b=20, l=20, r=20),
+          annotations=[dict(text=f"<b>{total_horas}h</b><br>Total", x=0.5, y=0.5, font_size=20, showarrow=False)],
+      )
+
+      st.plotly_chart(fig, use_container_width=True)
 
       st.write("### 📋 Detalhamento por Peça")
       st.dataframe(
