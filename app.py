@@ -1,4 +1,3 @@
-from datetime import date
 import json
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
@@ -7,8 +6,13 @@ import streamlit as st
 
 
 def get_client():
-  # Pega o dicionário de segredos do Streamlit
   creds_dict = dict(st.secrets["gcp_service_account"])
+  # Normaliza as quebras de linha da chave privada lida via TOML
+  if "private_key" in creds_dict:
+    creds_dict["private_key"] = (
+        creds_dict["private_key"].replace("\\n", "\n").strip()
+    )
+
   scope = [
       "https://spreadsheets.google.com/feeds",
       "https://www.googleapis.com/auth/drive",
