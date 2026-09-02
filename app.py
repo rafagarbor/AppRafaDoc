@@ -9,7 +9,7 @@ import plotly.express as px
 import streamlit as st
 
 
-# --- CACHE E CONEXÃO ---
+# --- CACHE E CONEXÃO ÚNICA ---
 @st.cache_resource
 def get_client():
   b64_str = st.secrets["part1"] + st.secrets["part2"]
@@ -24,10 +24,17 @@ def get_client():
   return gspread.authorize(creds)
 
 
-@st.cache_data(ttl=60)
-def carregar_dados_planilha(nome_aba):
+@st.cache_resource
+def get_spreadsheet():
+  """Abre a planilha uma única vez e guarda em cache global do app."""
   client = get_client()
-  sheet = client.open("Doutorado_Estudos").worksheet(nome_aba)
+  return client.open("Doutorado_Estudos")
+
+
+@st.cache_data(ttl=300)  # Cache de 5 minutos para poupar a cota da API
+def carregar_dados_planilha(nome_aba):
+  sh = get_spreadsheet()
+  sheet = sh.worksheet(nome_aba)
   return sheet.get_all_values()
 
 
@@ -57,7 +64,15 @@ aba1, aba2, aba3, aba4 = st.tabs(
     ["⏱️ Timer/Estudos", "🎼 Repertório", "📊 Análise de Tempo", "📚 Leituras"]
 )
 
-client = get_client()
+# Inicializa a planilha globalmente de forma segura
+try:
+  sh_global = get_spreadsheet()
+except Exception as e:
+  st.error(
+      f"Erro ao conectar com a planilha do Google Sheets. Verifique suas"
+      f" credenciais nos Secrets. Detalhes: {e}"
+  )
+  st.stop()
 
 tipos_estudo_opcoes = [
     "📖 Leitura / Decodificação",
@@ -163,7 +178,7 @@ with aba1:
         btn_salvar_tempo = st.form_submit_button("💾 Salvar Registro de Tempo")
 
         if btn_salvar_tempo:
-          sheet_log = client.open("Doutorado_Estudos").worksheet("Log_Tempo")
+          sheet_log = sh_global.worksheet("Log_Tempo")
           data_hoje_str = date.today().strftime("%d/%m/%Y")
           sheet_log.append_row([
               data_hoje_str,
@@ -218,72 +233,75 @@ with aba1:
 # --- ABA 2: REPERTÓRIO ---
 with aba2:
   st.subheader("🎼 Repertório")
-  sheet_rep_obj = client.open("Doutorado_Estudos").worksheet("Repertorio")
-  data = carregar_dados_planilha("Repertorio")
+  try:
+    sheet_rep_obj = sh_global.worksheet("Repertorio")
+    data = carregar_dados_planilha("Repertorio")
 
-  with st.expander("➕ Adicionar Nova Obra"):
-    nova_obra = st.text_input("Nome da Obra", key="input_nova_obra_rep")
-    novo_status = st.selectbox(
-        "Status", opcoes_status_obra, key="status_nova_obra"
-    )
-    link_goodnotes = st.text_input(
-        "Link / URL da Partitura no GoodNotes (Opcional):",
-        key="link_gn_novo_rep",
-        help="Cole aqui o link do documento para abrir a partitura direto no iPad.",
-    )
+    with st.expander("➕ Adicionar Nova Obra"):
+      nova_obra = st.text_input("Nome da Obra", key="input_nova_obra_rep")
+      novo_status = st.selectbox(
+          "Status", opcoes_status_obra, key="status_nova_obra"
+      )
+      link_goodnotes = st.text_input(
+          "Link / URL da Partitura no GoodNotes (Opcional):",
+          key="link_gn_novo_rep",
+          help="Cole aqui o link do documento para abrir a partitura direto no iPad.",
+      )
 
-    if st.button("Salvar Obra"):
-      if nova_obra:
-        sheet_rep_obj.append_row([nova_obra, novo_status, link_goodnotes])
-        limpar_cache()
-        st.success("Obra adicionada com sucesso!")
-        st.rerun()
-      else:
-        st.warning("Digite o nome da obra.")
+      if st.button("Salvar Obra"):
+        if nova_obra:
+          sheet_rep_obj.append_row([nova_obra, novo_status, link_goodnotes])
+          limpar_cache()
+          st.success("Obra adicionada com sucesso!")
+          st.rerun()
+        else:
+          st.warning("Digite o nome da obra.")
 
-  if len(data) > 1:
-    rows = [
-        {
-            "Obra": r[0] if len(r) > 0 else "",
-            "Status": r[1] if len(r) > 1 else "",
-            "GoodNotes Link": r[2] if len(r) > 2 else "",
-        }
-        for r in data[1:]
-    ]
-    df_rep = pd.DataFrame(rows)
+    if len(data) > 1:
+      rows = [
+          {
+              "Obra": r[0] if len(r) > 0 else "",
+              "Status": r[1] if len(r) > 1 else "",
+              "GoodNotes Link": r[2] if len(r) > 2 else "",
+          }
+          for r in data[1:]
+      ]
+      df_rep = pd.DataFrame(rows)
 
-    st.markdown("### 📋 Suas Obras Cadastradas")
-    st.dataframe(
-        df_rep,
-        column_config={
-            "GoodNotes Link": st.column_config.LinkColumn("Link Partitura"),
-            "Status": st.column_config.SelectboxColumn(
-                "Status", options=opcoes_status_obra, required=True
-            ),
-        },
-        use_container_width=True,
-        hide_index=True,
-    )
+      st.markdown("### 📋 Suas Obras Cadastradas")
+      st.dataframe(
+          df_rep,
+          column_config={
+              "GoodNotes Link": st.column_config.LinkColumn("Link Partitura"),
+              "Status": st.column_config.SelectboxColumn(
+                  "Status", options=opcoes_status_obra, required=True
+              ),
+          },
+          use_container_width=True,
+          hide_index=True,
+      )
 
-    st.markdown("---")
-    st.markdown("### ✏️ Gerenciar / Excluir Obra")
-    obra_selecionada_del = st.selectbox(
-        "Selecione a obra para remover:",
-        [""] + df_rep["Obra"].tolist(),
-        key="select_obra_del",
-    )
+      st.markdown("---")
+      st.markdown("### ✏️ Gerenciar / Excluir Obra")
+      obra_selecionada_del = st.selectbox(
+          "Selecione a obra para remover:",
+          [""] + df_rep["Obra"].tolist(),
+          key="select_obra_del",
+      )
 
-    if obra_selecionada_del:
-      if st.button("🗑️ Excluir Obra Selecionada", type="primary"):
-        index_linha = (
-            df_rep[df_rep["Obra"] == obra_selecionada_del].index[0] + 2
-        )
-        sheet_rep_obj.delete_rows(index_linha)
-        limpar_cache()
-        st.success(f"Obra '{obra_selecionada_del}' removida!")
-        st.rerun()
-  else:
-    st.info("Nenhuma obra cadastrada ainda.")
+      if obra_selecionada_del:
+        if st.button("🗑️ Excluir Obra Selecionada", type="primary"):
+          index_linha = (
+              df_rep[df_rep["Obra"] == obra_selecionada_del].index[0] + 2
+          )
+          sheet_rep_obj.delete_rows(index_linha)
+          limpar_cache()
+          st.success(f"Obra '{obra_selecionada_del}' removida!")
+          st.rerun()
+    else:
+      st.info("Nenhuma obra cadastrada ainda.")
+  except Exception as e:
+    st.error(f"Erro ao carregar a aba Repertório: {e}")
 
 # --- ABA 3: DASHBOARD / ANÁLISE DE TEMPO ---
 with aba3:
@@ -427,7 +445,7 @@ with aba3:
       st.markdown("---")
       st.write("### ✏️ Editar ou Excluir Registro de Tempo")
 
-      sheet_log_obj = client.open("Doutorado_Estudos").worksheet("Log_Tempo")
+      sheet_log_obj = sh_global.worksheet("Log_Tempo")
       df_log["Label_Sessao"] = (
           "Linha "
           + df_log["Row_Index"].astype(str)
@@ -531,159 +549,166 @@ with aba3:
 # --- ABA 4: LEITURAS ---
 with aba4:
   st.subheader("📚 Leituras & Fichamento da Tese")
-  sheet_l_obj = client.open("Doutorado_Estudos").worksheet("Leituras")
-  data_l = carregar_dados_planilha("Leituras")
+  try:
+    sheet_l_obj = sh_global.worksheet("Leituras")
+    data_l = carregar_dados_planilha("Leituras")
 
-  with st.expander("➕ Adicionar Nova Leitura"):
-    novo_artigo = st.text_input("Título / Autor do Texto", key="input_novo_artigo")
-    status_leitura = st.selectbox(
-        "Status", opcoes_leitura, key="status_novo_artigo"
-    )
-    app_leitura = st.selectbox(
-        "Onde você lê este texto?", opcoes_app, key="app_novo_artigo"
-    )
-    link_leitura = st.text_input(
-        "Link / URL do Texto ou GoodNotes (Opcional):",
-        key="link_novo_artigo",
-        help="Cole aqui o link do GoodNotes ou o link do PDF/Arquivo.",
-    )
-    anotacoes_tese = st.text_area(
-        "Notas / Citações Relevantes para a Tese:",
-        key="input_anotacoes_tese",
-        help="Escreva aqui conceitos, citações ou ideias.",
-    )
-
-    if st.button("Salvar Leitura"):
-      if novo_artigo:
-        sheet_l_obj.append_row(
-            [novo_artigo, status_leitura, anotacoes_tese, app_leitura, link_leitura]
-        )
-        limpar_cache()
-        st.success("Leitura salva com sucesso!")
-        st.rerun()
-      else:
-        st.warning("Preencha o título/autor do texto.")
-
-  if len(data_l) > 1:
-    rows = []
-    for r in data_l[1:]:
-      artigo = r[0] if len(r) > 0 else ""
-      status = r[1] if len(r) > 1 else "Não Lido"
-      anotacao = r[2] if len(r) > 2 else ""
-      app_origem = r[3] if len(r) > 3 else "Pré-visualização (PDF / Web / Arquivo)"
-      link_doc = r[4] if len(r) > 4 else ""
-      rows.append([artigo, status, anotacao, app_origem, link_doc])
-
-    df_l = pd.DataFrame(
-        rows,
-        columns=[
-            "Artigo / Livro",
-            "Status",
-            "Anotações Tese",
-            "App Origem",
-            "Link Documento",
-        ],
-    )
-
-    for idx, row in df_l.iterrows():
-      col_l_a, col_l_b, col_l_c = st.columns([3, 2, 2])
-      with col_l_a:
-        st.write(f"**{row['Artigo / Livro']}**")
-        if row["Anotações Tese"]:
-          st.caption(
-              f"📝 *Notas:* {row['Anotações Tese'][:80]}..."
-              if len(row["Anotações Tese"]) > 80
-              else f"📝 *Notas:* {row['Anotações Tese']}"
-          )
-      with col_l_b:
-        st.caption(f"Status: {row['Status']}")
-      with col_l_c:
-        if row["Link Documento"]:
-          icone = "📖" if "GoodNotes" in row["App Origem"] else "📄"
-          rotulo_btn = (
-              "Abrir no GoodNotes"
-              if "GoodNotes" in row["App Origem"]
-              else "Abrir Texto"
-          )
-          st.markdown(
-              f"[{icone} {rotulo_btn}]({row['Link Documento']})",
-              unsafe_allow_html=True,
-          )
-        else:
-          st.caption("Sem link")
-      st.divider()
-
-    st.markdown("---")
-    st.markdown("### ✏️ Editar ou Excluir Leitura")
-
-    artigo_edit = st.selectbox(
-        "Selecione o texto:",
-        [""] + df_l["Artigo / Livro"].tolist(),
-        key="select_artigo_edit",
-    )
-
-    if artigo_edit:
-      item_atual = df_l[df_l["Artigo / Livro"] == artigo_edit].iloc[0]
-      status_atual = item_atual["Status"]
-      anotacao_atual = item_atual["Anotações Tese"]
-      app_atual = item_atual["App Origem"]
-      link_atual = item_atual["Link Documento"]
-
-      idx_status = (
-          opcoes_leitura.index(status_atual)
-          if status_atual in opcoes_leitura
-          else 0
+    with st.expander("➕ Adicionar Nova Leitura"):
+      novo_artigo = st.text_input("Título / Autor do Texto", key="input_novo_artigo")
+      status_leitura = st.selectbox(
+          "Status", opcoes_leitura, key="status_novo_artigo"
       )
-      idx_app = opcoes_app.index(app_atual) if app_atual in opcoes_app else 0
-
-      novo_status_leitura = st.selectbox(
-          "Atualizar Status:",
-          opcoes_leitura,
-          index=idx_status,
-          key="edit_status_leitura",
+      app_leitura = st.selectbox(
+          "Onde lê este texto?", opcoes_app, key="app_novo_artigo"
+      )
+      link_leitura = st.text_input(
+          "Link / URL do Texto ou GoodNotes (Opcional):",
+          key="link_novo_artigo",
+          help="Cole aqui o link do GoodNotes ou o link do PDF/Arquivo.",
+      )
+      anotacoes_tese = st.text_area(
+          "Notas / Citações Relevantes para a Tese:",
+          key="input_anotacoes_tese",
+          help="Escreva aqui conceitos, citações ou ideias.",
       )
 
-      novo_app_leitura = st.selectbox(
-          "Onde lê este texto?:",
-          opcoes_app,
-          index=idx_app,
-          key="edit_app_leitura",
-      )
-
-      novo_link_leitura = st.text_input(
-          "Link / URL do Texto:", value=link_atual, key="edit_link_leitura"
-      )
-
-      novas_anotacoes = st.text_area(
-          "Atualizar Anotações para a Tese:",
-          value=anotacao_atual,
-          key="edit_anotacoes_tese",
-      )
-
-      col_l1, col_l2 = st.columns(2)
-
-      with col_l1:
-        if st.button("Atualizar Leitura"):
-          row_idx = df_l[df_l["Artigo / Livro"] == artigo_edit].index[0] + 2
-          sheet_l_obj.update_cell(row_idx, 2, novo_status_leitura)
-          sheet_l_obj.update_cell(row_idx, 3, novas_anotacoes)
-          sheet_l_obj.update_cell(row_idx, 4, novo_app_leitura)
-          sheet_l_obj.update_cell(row_idx, 5, novo_link_leitura)
+      if st.button("Salvar Leitura"):
+        if novo_artigo:
+          sheet_l_obj.append_row([
+              novo_artigo,
+              status_leitura,
+              anotacoes_tese,
+              app_leitura,
+              link_leitura,
+          ])
           limpar_cache()
-          st.success("Informações atualizadas com sucesso!")
+          st.success("Leitura salva com sucesso!")
           st.rerun()
+        else:
+          st.warning("Preencha o título/autor do texto.")
 
-      with col_l2:
-        st.write("🗑️ **Excluir Registro**")
-        confirmar_del_leit = st.checkbox(
-            "Confirmar exclusão", key="check_del_leit"
-        )
-        if st.button("Excluir Leitura", type="primary"):
-          if confirmar_del_leit:
-            row_idx = df_l[df_l["Artigo / Livro"] == artigo_edit].index[0] + 2
-            sheet_l_obj.delete_rows(row_idx)
-            limpar_cache()
-            st.success(f"'{artigo_edit}' removido com sucesso!")
-            st.rerun()
+    if len(data_l) > 1:
+      rows = []
+      for r in data_l[1:]:
+        artigo = r[0] if len(r) > 0 else ""
+        status = r[1] if len(r) > 1 else "Não Lido"
+        anotacao = r[2] if len(r) > 2 else ""
+        app_origem = r[3] if len(r) > 3 else "Pré-visualização (PDF / Web / Arquivo)"
+        link_doc = r[4] if len(r) > 4 else ""
+        rows.append([artigo, status, anotacao, app_origem, link_doc])
+
+      df_l = pd.DataFrame(
+          rows,
+          columns=[
+              "Artigo / Livro",
+              "Status",
+              "Anotações Tese",
+              "App Origem",
+              "Link Documento",
+          ],
+      )
+
+      for idx, row in df_l.iterrows():
+        col_l_a, col_l_b, col_l_c = st.columns([3, 2, 2])
+        with col_l_a:
+          st.write(f"**{row['Artigo / Livro']}**")
+          if row["Anotações Tese"]:
+            st.caption(
+                f"📝 *Notas:* {row['Anotações Tese'][:80]}..."
+                if len(row["Anotações Tese"]) > 80
+                else f"📝 *Notas:* {row['Anotações Tese']}"
+            )
+        with col_l_b:
+          st.caption(f"Status: {row['Status']}")
+        with col_l_c:
+          if row["Link Documento"]:
+            icone = "📖" if "GoodNotes" in row["App Origem"] else "📄"
+            rotulo_btn = (
+                "Abrir no GoodNotes"
+                if "GoodNotes" in row["App Origem"]
+                else "Abrir Texto"
+            )
+            st.markdown(
+                f"[{icone} {rotulo_btn}]({row['Link Documento']})",
+                unsafe_allow_html=True,
+            )
           else:
-            st.warning("Marque a caixa de confirmação antes de excluir.")
+            st.caption("Sem link")
+        st.divider()
+
+      st.markdown("---")
+      st.markdown("### ✏️ Editar ou Excluir Leitura")
+
+      artigo_edit = st.selectbox(
+          "Selecione o texto:",
+          [""] + df_l["Artigo / Livro"].tolist(),
+          key="select_artigo_edit",
+      )
+
+      if artigo_edit:
+        item_atual = df_l[df_l["Artigo / Livro"] == artigo_edit].iloc[0]
+        status_atual = item_atual["Status"]
+        anotacao_atual = item_atual["Anotações Tese"]
+        app_atual = item_atual["App Origem"]
+        link_atual = item_atual["Link Documento"]
+
+        idx_status = (
+            opcoes_leitura.index(status_atual)
+            if status_atual in opcoes_leitura
+            else 0
+        )
+        idx_app = opcoes_app.index(app_atual) if app_atual in opcoes_app else 0
+
+        novo_status_leitura = st.selectbox(
+            "Atualizar Status:",
+            opcoes_leitura,
+            index=idx_status,
+            key="edit_status_leitura",
+        )
+
+        novo_app_leitura = st.selectbox(
+            "Onde lê este texto?:",
+            opcoes_app,
+            index=idx_app,
+            key="edit_app_leitura",
+        )
+
+        novo_link_leitura = st.text_input(
+            "Link / URL do Texto:", value=link_atual, key="edit_link_leitura"
+        )
+
+        novas_anotacoes = st.text_area(
+            "Atualizar Anotações para a Tese:",
+            value=anotacao_atual,
+            key="edit_anotacoes_tese",
+        )
+
+        col_l1, col_l2 = st.columns(2)
+
+        with col_l1:
+          if st.button("Atualizar Leitura"):
+            row_idx = df_l[df_l["Artigo / Livro"] == artigo_edit].index[0] + 2
+            sheet_l_obj.update_cell(row_idx, 2, novo_status_leitura)
+            sheet_l_obj.update_cell(row_idx, 3, novas_anotacoes)
+            sheet_l_obj.update_cell(row_idx, 4, novo_app_leitura)
+            sheet_l_obj.update_cell(row_idx, 5, novo_link_leitura)
+            limpar_cache()
+            st.success("Informações atualizadas com sucesso!")
+            st.rerun()
+
+        with col_l2:
+          st.write("🗑️ **Excluir Registro**")
+          confirmar_del_leit = st.checkbox(
+              "Confirmar exclusão", key="check_del_leit"
+          )
+          if st.button("Excluir Leitura", type="primary"):
+            if confirmar_del_leit:
+              row_idx = df_l[df_l["Artigo / Livro"] == artigo_edit].index[0] + 2
+              sheet_l_obj.delete_rows(row_idx)
+              limpar_cache()
+              st.success(f"'{artigo_edit}' removido com sucesso!")
+              st.rerun()
+            else:
+              st.warning("Marque a caixa de confirmação antes de excluir.")
+  except Exception as e:
+    st.error(f"Erro ao carregar a aba Leituras: {e}")
