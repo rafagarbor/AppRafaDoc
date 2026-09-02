@@ -65,8 +65,20 @@ def gerar_botao_metronomo():
   url_metronomo = "shortcuts://run-shortcut?name=AbrirMetronomo"
   return f"""
     <a href="{url_metronomo}" class="custom-btn-link" style="text-decoration: none !important;">
-        <div style="background-color: #8E24AA; padding: 12px; text-align: center; border-radius: 8px; margin-top: 4px; margin-bottom: 12px;">
-            <span style="color: #FFFFFF !important; font-size: 16px; font-weight: bold; text-decoration: none !important;">🎼 Abrir Metrônomo (Metronome Beats)</span>
+        <div style="background-color: #8E24AA; padding: 12px; text-align: center; border-radius: 8px; margin-top: 4px; margin-bottom: 8px;">
+            <span style="color: #FFFFFF !important; font-size: 15px; font-weight: bold; text-decoration: none !important;">🎼 Metrônomo</span>
+        </div>
+    </a>
+    """
+
+
+def gerar_botao_afinador():
+  """Gera o botão para abrir o atalho do Afinador no iOS."""
+  url_afinador = "shortcuts://run-shortcut?name=AbrirAfinador"
+  return f"""
+    <a href="{url_afinador}" class="custom-btn-link" style="text-decoration: none !important;">
+        <div style="background-color: #00897B; padding: 12px; text-align: center; border-radius: 8px; margin-top: 4px; margin-bottom: 8px;">
+            <span style="color: #FFFFFF !important; font-size: 15px; font-weight: bold; text-decoration: none !important;">🎸 Afinador</span>
         </div>
     </a>
     """
@@ -148,7 +160,7 @@ with aba1:
 
   st.markdown("---")
 
-  st.subheader("⏱️ Temporizador Rápido & Ferramentas (Nativo iOS)")
+  st.subheader("⏱️ Temporizador Rápido (Nativo iOS)")
   col1, col2, col3, col4 = st.columns(4)
 
   with col1:
@@ -172,9 +184,6 @@ with aba1:
         unsafe_allow_html=True,
     )
 
-  # Botão do Metrônomo
-  st.markdown(gerar_botao_metronomo(), unsafe_allow_html=True)
-
   with st.expander("⚙️ Tempo Personalizado"):
     mins_custom = st.number_input(
         "Minutos de estudo:", min_value=1, max_value=180, value=25
@@ -187,6 +196,13 @@ with aba1:
         ),
         unsafe_allow_html=True,
     )
+
+  # --- FERRAMENTAS MUSICAIS (Abaixo do tempo personalizado) ---
+  col_tool1, col_tool2 = st.columns(2)
+  with col_tool1:
+    st.markdown(gerar_botao_metronomo(), unsafe_allow_html=True)
+  with col_tool2:
+    st.markdown(gerar_botao_afinador(), unsafe_allow_html=True)
 
   st.markdown("---")
   st.subheader("⏱️ Registrar Tempo Estudado por Peça")
