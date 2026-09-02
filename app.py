@@ -1,5 +1,6 @@
 import base64
 import json
+import urllib.parse
 from google.oauth2.service_account import Credentials
 import gspread
 import pandas as pd
@@ -7,7 +8,6 @@ import streamlit as st
 
 
 def get_client():
-  # Junta as partes da string Base64 salvas nos Secrets
   b64_str = st.secrets["part1"] + st.secrets["part2"]
   json_bytes = base64.b64decode(b64_str)
   creds_dict = json.loads(json_bytes.decode("utf-8"))
@@ -21,7 +21,7 @@ def get_client():
 
 
 def gerar_botao_timer(minutos, cor="#4CAF50", texto_personalizado=None):
-  """Função auxiliar para gerar botões HTML de timer compatíveis com o iOS Shortcut."""
+  """Gera botões HTML para disparar o timer via Atalho nativo do iOS."""
   url_timer = (
       f"shortcuts://run-shortcut?name=IniciarTimer&input=text&text={minutos}"
   )
@@ -45,7 +45,6 @@ with aba1:
   st.subheader("⏱️ Temporizador Rápido (Nativo iOS)")
   st.write("Selecione um bloco de tempo para disparar o timer no iPad:")
 
-  # Botões rápidos dispostos em colunas
   col1, col2, col3, col4 = st.columns(4)
 
   with col1:
@@ -72,7 +71,6 @@ with aba1:
         unsafe_allow_html=True,
     )
 
-  # Opção para tempo customizado
   with st.expander("⚙️ Tempo Personalizado"):
     mins_custom = st.number_input(
         "Minutos de estudo:", min_value=1, max_value=180, value=25
@@ -94,43 +92,34 @@ with aba1:
     col_d1, col_d2 = st.columns(2)
 
     with col_d1:
-      texto_v = f"#Violao\n\n{resumo}"
-      if st.button("🎸 Preparar para Diário Violão"):
-        # Copia o texto limpo com tag para a Área de Transferência
-        st.write(
-            f"<script>navigator.clipboard.writeText({json.dumps(texto_v)});</script>",
-            unsafe_allow_html=True,
-        )
-        url_v = "shortcuts://run-shortcut?name=RegistrarEstudo"
-        st.markdown(
-            f'<a href="{url_v}" target="_blank" style="text-decoration:none;"><div'
-            ' style="background-color:#008CBA; color:white; padding:12px;'
-            " text-align:center; border-radius:8px; font-weight:bold;"
-            ' margin-top:8px;">🚀 Enviar ao Diário (Violão)</div></a>',
-            unsafe_allow_html=True,
-        )
+      texto_violao = f"#Violao\n\n{resumo}"
+      # Converte quebras de linha, espaços e acentos em formato seguro de URL
+      texto_v_encoded = urllib.parse.quote(texto_violao)
+      url_v = f"shortcuts://run-shortcut?name=RegistrarEstudo&input=text&text={texto_v_encoded}"
+
+      st.markdown(
+          f'<a href="{url_v}" style="text-decoration:none;"><div'
+          ' style="background-color:#008CBA; color:white; padding:12px;'
+          " text-align:center; border-radius:8px; font-weight:bold;"
+          ' margin-top:8px;">🚀 Enviar ao Diário (Violão)</div></a>',
+          unsafe_allow_html=True,
+      )
 
     with col_d2:
-      texto_d = f"#Doutorado\n\n{resumo}"
-      if st.button("🎓 Preparar para Diário Doutorado"):
-        # Copia o texto limpo com tag para a Área de Transferência
-        st.write(
-            f"<script>navigator.clipboard.writeText({json.dumps(texto_d)});</script>",
-            unsafe_allow_html=True,
-        )
-        url_d = "shortcuts://run-shortcut?name=RegistrarEstudo"
-        st.markdown(
-            f'<a href="{url_d}" target="_blank" style="text-decoration:none;"><div'
-            ' style="background-color:#8E44AD; color:white; padding:12px;'
-            " text-align:center; border-radius:8px; font-weight:bold;"
-            ' margin-top:8px;">🚀 Enviar ao Diário (Doutorado)</div></a>',
-            unsafe_allow_html=True,
-        )
+      texto_doutorado = f"#Doutorado\n\n{resumo}"
+      # Converte quebras de linha, espaços e acentos em formato seguro de URL
+      texto_d_encoded = urllib.parse.quote(texto_doutorado)
+      url_d = f"shortcuts://run-shortcut?name=RegistrarEstudo&input=text&text={texto_d_encoded}"
+
+      st.markdown(
+          f'<a href="{url_d}" style="text-decoration:none;"><div'
+          ' style="background-color:#8E44AD; color:white; padding:12px;'
+          " text-align:center; border-radius:8px; font-weight:bold;"
+          ' margin-top:8px;">🚀 Enviar ao Diário (Doutorado)</div></a>',
+          unsafe_allow_html=True,
+      )
   else:
-    st.info(
-        "Digite o resumo da sua prática acima para habilitar as opções de envio"
-        " ao Diário."
-    )
+    st.info("Digite o resumo da sua prática acima para habilitar o envio.")
 
 # --- ABA 2: REPERTÓRIO ---
 with aba2:
