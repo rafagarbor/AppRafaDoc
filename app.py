@@ -45,7 +45,7 @@ def limpar_cache():
   carregar_dados_planilha.clear()
 
 
-def gerar_botao_timer(minutos, cor="#4CAF50", texto_personalizado=None):
+def gerar_botao_timer(minutos, cor="#2E7D32", texto_personalizado=None):
   """Gera botões HTML para disparar o timer via Atalho nativo do iOS."""
   url_timer = (
       f"shortcuts://run-shortcut?name=IniciarTimer&input=text&text={minutos}"
@@ -53,8 +53,8 @@ def gerar_botao_timer(minutos, cor="#4CAF50", texto_personalizado=None):
   rotulo = texto_personalizado if texto_personalizado else f"⏱️ {minutos} min"
   return f"""
     <a href="{url_timer}" style="text-decoration: none;">
-        <div style="background-color: {cor}; color: white; padding: 12px; text-align: center; border-radius: 8px; font-size: 16px; font-weight: bold; margin-bottom: 8px;">
-            {rotulo}
+        <div style="background-color: {cor}; color: #FFFFFF !important; padding: 12px; text-align: center; border-radius: 8px; font-size: 16px; font-weight: bold; margin-bottom: 8px;">
+            <span style="color: #FFFFFF !important;">{rotulo}</span>
         </div>
     </a>
     """
@@ -132,12 +132,12 @@ with aba1:
     )
   with col3:
     st.markdown(
-        gerar_botao_timer(10, cor="#F57C00", texto_personalizado="☕ 10 min"),
+        gerar_botao_timer(10, cor="#D35400", texto_personalizado="☕ 10 min"),
         unsafe_allow_html=True,
     )
   with col4:
     st.markdown(
-        gerar_botao_timer(5, cor="#D32F2F", texto_personalizado="⚡ 5 min"),
+        gerar_botao_timer(5, cor="#C0392B", texto_personalizado="⚡ 5 min"),
         unsafe_allow_html=True,
     )
 
@@ -207,33 +207,42 @@ with aba1:
 
   st.markdown("---")
   st.subheader("📝 Reflexão (Diário iOS)")
-  resumo = st.text_area("Resumo da prática:")
+  resumo = st.text_area(
+      "Resumo da prática:",
+      placeholder="Escreva suas notas aqui para habilitar os botões de envio...",
+  )
 
-  if resumo:
-    col_d1, col_d2 = st.columns(2)
-    with col_d1:
-      texto_violao = f"#Violao\n\n{resumo}"
-      texto_v_encoded = urllib.parse.quote(texto_violao)
-      url_v = f"shortcuts://run-shortcut?name=RegistrarEstudo&input=text&text={texto_v_encoded}"
-      st.markdown(
-          f'<a href="{url_v}" style="text-decoration:none;"><div'
-          ' style="background-color:#008CBA; color:white; padding:12px;'
-          " text-align:center; border-radius:8px; font-weight:bold;"
-          ' margin-top:8px;">🚀 Enviar ao Diário (Violão)</div></a>',
-          unsafe_allow_html=True,
-      )
+  # Botões do Diário sempre visíveis (mas com comportamento dinâmico baseados no texto)
+  col_d1, col_d2 = st.columns(2)
+  texto_para_enviar = (
+      resumo if resumo else "Sessão de estudo sem resumo especificado."
+  )
 
-    with col_d2:
-      texto_doutorado = f"#Doutorado\n\n{resumo}"
-      texto_d_encoded = urllib.parse.quote(texto_doutorado)
-      url_d = f"shortcuts://run-shortcut?name=RegistrarEstudo&input=text&text={texto_d_encoded}"
-      st.markdown(
-          f'<a href="{url_d}" style="text-decoration:none;"><div'
-          ' style="background-color:#8E44AD; color:white; padding:12px;'
-          " text-align:center; border-radius:8px; font-weight:bold;"
-          ' margin-top:8px;">🚀 Enviar ao Diário (Doutorado)</div></a>',
-          unsafe_allow_html=True,
-      )
+  with col_d1:
+    texto_violao = f"#Violao\n\n{texto_para_enviar}"
+    texto_v_encoded = urllib.parse.quote(texto_violao)
+    url_v = f"shortcuts://run-shortcut?name=RegistrarEstudo&input=text&text={texto_v_encoded}"
+    st.markdown(
+        f'<a href="{url_v}" style="text-decoration:none;"><div'
+        ' style="background-color:#008CBA; color:#FFFFFF !important; padding:12px;'
+        " text-align:center; border-radius:8px; font-weight:bold;"
+        ' margin-top:8px;"><span style="color: #FFFFFF !important;">🚀 Enviar'
+        " ao Diário (Violão)</span></div></a>",
+        unsafe_allow_html=True,
+    )
+
+  with col_d2:
+    texto_doutorado = f"#Doutorado\n\n{texto_para_enviar}"
+    texto_d_encoded = urllib.parse.quote(texto_doutorado)
+    url_d = f"shortcuts://run-shortcut?name=RegistrarEstudo&input=text&text={texto_d_encoded}"
+    st.markdown(
+        f'<a href="{url_d}" style="text-decoration:none;"><div'
+        ' style="background-color:#6C3483; color:#FFFFFF !important; padding:12px;'
+        " text-align:center; border-radius:8px; font-weight:bold;"
+        ' margin-top:8px;"><span style="color: #FFFFFF !important;">🚀 Enviar'
+        " ao Diário (Doutorado)</span></div></a>",
+        unsafe_allow_html=True,
+    )
 
 # --- ABA 2: REPERTÓRIO ---
 with aba2:
@@ -275,7 +284,7 @@ with aba2:
 
       st.markdown("### 📋 Suas Obras Cadastradas")
 
-      # Exibição limpa e customizada com layout em colunas para cada obra
+      # Exibição com botões estilizados de alta legibilidade (Fundo Verde Escuro / Letra Branca)
       for idx, row in df_rep.iterrows():
         c_rep1, c_rep2, c_rep3 = st.columns([3, 2, 2])
         with c_rep1:
@@ -286,10 +295,13 @@ with aba2:
           link_val = row["GoodNotes Link"]
           if link_val and link_val.strip() != "":
             st.markdown(
-                f'<a href="{link_val}" target="_blank" style="text-decoration: none;">'
-                '<div style="background-color: #2E7D32; color: white; padding: '
-                '6px 10px; text-align: center; border-radius: 6px; font-size: '
-                '13px; font-weight: bold;">🎵 Abrir Partitura</div></a>',
+                f'<a href="{link_val}" target="_blank" style="text-decoration:'
+                ' none;"><div style="background-color: #1E8449; color: #FFFFFF'
+                ' !important; padding: 8px 12px; text-align: center;'
+                ' border-radius: 6px; font-size: 13px; font-weight: bold;'
+                ' box-shadow: 0px 1px 3px rgba(0,0,0,0.2);"><span'
+                ' style="color: #FFFFFF !important;">🎵 Abrir'
+                " Partitura</span></div></a>",
                 unsafe_allow_html=True,
             )
           else:
