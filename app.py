@@ -1,19 +1,19 @@
 from datetime import date
-import json
+from google.oauth2.service_account import Credentials
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
 import pandas as pd
 import streamlit as st
 
 
-# Configuração da conexão com Google Sheets corrigida
+# Configuração moderna e segura da conexão com Google Sheets
 def get_client():
+  # Pega o dicionário de segredos diretamente do Streamlit
   creds_dict = dict(st.secrets["gcp_service_account"])
   scope = [
-      "https://spreadsheets.google.com/feeds",
+      "https://www.googleapis.com/auth/spreadsheets",
       "https://www.googleapis.com/auth/drive",
   ]
-  creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+  creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
   return gspread.authorize(creds)
 
 
