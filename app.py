@@ -32,7 +32,6 @@ with aba1:
       "Minutos de estudo:", min_value=1, max_value=180, value=45
   )
 
-  # Link para o Atalho IniciarTimer com HTML corrigido
   url_timer = f"shortcuts://run-shortcut?name=IniciarTimer&input=text&text={mins}"
   html_timer = f"""
     <a href="{url_timer}" style="text-decoration: none;">
@@ -69,7 +68,6 @@ with aba2:
   sheet = client.open("Doutorado_Estudos").worksheet("Repertorio")
   data = sheet.get_all_values()
 
-  # Lista de opções refinadas para o status musical
   opcoes_status = [
       "1. Não Iniciada",
       "2. Leitura / Decodificação",
@@ -96,22 +94,82 @@ with aba2:
         "Selecione:", df["Obra"].tolist(), key="select_obra_edit"
     )
     status_edit = st.selectbox("Novo:", opcoes_status, key="status_edit_val")
-    if st.button("Atualizar"):
+    if st.button("Atualizar Obra"):
       index = df[df["Obra"] == obra_edit].index[0] + 2
       sheet.update_cell(index, 2, status_edit)
       st.rerun()
 
 # --- ABA 3: LEITURAS ---
 with aba3:
-  st.subheader("📚 Leituras")
+  st.subheader("📚 Leituras & Fichamento da Tese")
   client = get_client()
   sheet_l = client.open("Doutorado_Estudos").worksheet("Leituras")
 
-  novo_artigo = st.text_input("Novo Artigo/Livro", key="input_novo_artigo")
-  if st.button("Adicionar Leitura"):
-    sheet_l.append_row([novo_artigo, "Não Lido"])
-    st.rerun()
+  opcoes_leitura = ["Não Lido", "Lendo", "Lido", "Fichado para Tese"]
+
+  with st.expander("➕ Adicionar Nova Leitura"):
+    novo_artigo = st.text_input("Título / Autor do Texto", key="input_novo_artigo")
+    status_leitura = st.selectbox("Status", opcoes_leitura, key="status_novo_artigo")
+    anotacoes_tese = st.text_area(
+        "Notas / Citações Relevantes para a Tese:",
+        key="input_anotacoes_tese",
+        help="Escreva aqui conceitos, citações ou ideias para utilizar na tese.",
+    )
+
+    if st.button("Salvar Leitura"):
+      if novo_artigo:
+        sheet_l.append_row([novo_artigo, status_leitura, anotacoes_tese])
+        st.success("Leitura salva com sucesso!")
+        st.rerun()
+      else:
+        st.warning("Preencha o título/autor do texto.")
 
   data_l = sheet_l.get_all_values()
+
   if len(data_l) > 1:
-    st.table(pd.DataFrame(data_l[1:], columns=["Artigo", "Status"]))
+    # Garante que linhas sem anotação não quebrem a tabela
+    rows = []
+    for r in data_l[1:]:
+      artigo = r[0] if len(r) > 0 else ""
+      status = r[1] if len(r) > 1 else "Não Lido"
+      anotacao = r[2] if len(r) > 2 else ""
+      rows.append([artigo, status, anotacao])
+
+    df_l = pd.DataFrame(rows, columns=["Artigo / Livro", "Status", "Anotações Tese"])
+    st.table(df_l)
+
+    st.markdown("---")
+    st.markdown("### ✏️ Editar Status ou Anotações")
+
+    artigo_edit = st.selectbox(
+        "Selecione o texto para editar:",
+        df_l["Artigo / Livro"].tolist(),
+        key="select_artigo_edit",
+    )
+
+    # Recupera os valores atuais do item selecionado
+    item_atual = df_l[df_l["Artigo / Livro"] == artigo_edit].iloc[0]
+    status_atual = item_atual["Status"]
+    anotacao_atual = item_atual["Anotações Tese"]
+
+    idx_status = opcoes_leitura.index(status_atual) if status_atual in opcoes_leitura else 0
+
+    novo_status_leitura = st.selectbox(
+        "Atualizar Status:",
+        opcoes_leitura,
+        index=idx_status,
+        key="edit_status_leitura",
+    )
+
+    novas_anotacoes = st.text_area(
+        "Atualizar Anotações para a Tese:",
+        value=anotacao_atual,
+        key="edit_anotacoes_tese",
+    )
+
+    if st.button("Atualizar Leitura"):
+      row_idx = df_l[df_l["Artigo / Livro"] == artigo_edit].index[0] + 2
+      sheet_l.update_cell(row_idx, 2, novo_status_leitura)
+      sheet_l.update_cell(row_idx, 3, novas_anotacoes)
+      st.success("Informações atualizadas com sucesso!")
+      st.rerun()
