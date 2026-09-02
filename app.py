@@ -6,7 +6,6 @@ from google.oauth2.service_account import Credentials
 import gspread
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 import streamlit as st
 
 
@@ -46,6 +45,14 @@ aba1, aba2, aba3, aba4 = st.tabs(
 )
 
 client = get_client()
+
+tipos_estudo_opcoes = [
+    "📖 Leitura / Decodificação",
+    "⚙️ Técnica / Mecânica",
+    "🎵 Musicalidade / Interpretação",
+    "🔄 Manutenção / Memorização",
+    "🎙️ Simulação de Performance",
+]
 
 # --- ABA 1: TIMER E REGISTROS ---
 with aba1:
@@ -114,14 +121,18 @@ with aba1:
 
   if lista_obras:
     with st.form("form_log_tempo", clear_on_submit=True):
-      obra_selecionada = st.selectbox("Selecione a Obra / Peça:", lista_obras)
-      minutos_estudados = st.number_input(
-          "Minutos Praticados:", min_value=5, max_value=300, value=30, step=5
-      )
-      obs_sessao = st.text_input(
-          "Observação técnica (opcional):",
-          placeholder="ex: Foco no compasso 24 a 32 / Metrônomo a 80bpm",
-      )
+      c_form1, c_form2 = st.columns(2)
+      with c_form1:
+        obra_selecionada = st.selectbox("Selecione a Obra / Peça:", lista_obras)
+        minutos_estudados = st.number_input(
+            "Minutos Praticados:", min_value=5, max_value=300, value=30, step=5
+        )
+      with c_form2:
+        tipo_selecionado = st.selectbox("Foco / Tipo de Estudo:", tipos_estudo_opcoes)
+        obs_sessao = st.text_input(
+            "Observação técnica (opcional):",
+            placeholder="ex: C. 24-32 / Metrônomo a 80bpm",
+        )
 
       btn_salvar_tempo = st.form_submit_button("💾 Salvar Registro de Tempo")
 
@@ -133,9 +144,10 @@ with aba1:
             obra_selecionada,
             str(minutos_estudados),
             obs_sessao,
+            tipo_selecionado,
         ])
         st.success(
-            f"Registrado! {minutos_estudados} min dedicados a"
+            f"Registrado! {minutos_estudados} min de {tipo_selecionado} em"
             f" '{obra_selecionada}'."
         )
         st.rerun()
@@ -281,7 +293,7 @@ with aba2:
 
 # --- ABA 3: DASHBOARD / ANÁLISE DE TEMPO ---
 with aba3:
-  st.subheader("📊 Distribuição e Porcentagem de Tempo Estudado")
+  st.subheader("📊 Métricas e Análise de Tempo")
 
   try:
     sheet_log = client.open("Doutorado_Estudos").worksheet("Log_Tempo")
@@ -294,12 +306,14 @@ with aba3:
         d_obra = r[1] if len(r) > 1 else ""
         d_min = r[2] if len(r) > 2 else "0"
         d_obs = r[3] if len(r) > 3 else ""
+        d_tipo = r[4] if len(r) > 4 else "⚙️ Técnica / Mecânica"
         rows_log.append({
             "Row_Index": i,
             "Data": d_data,
             "Obra": d_obra,
             "Minutos": d_min,
             "Observacao": d_obs,
+            "Tipo": d_tipo if d_tipo else "⚙️ Técnica / Mecânica",
         })
 
       df_log = pd.DataFrame(rows_log)
@@ -311,58 +325,95 @@ with aba3:
 
       m_col1, m_col2 = st.columns(2)
       with m_col1:
-        st.metric("Total de Tempo Dedicado", f"{total_horas} hrs", f"{int(total_minutos)} minutos")
+        st.metric("Total Estudado", f"{total_horas} hrs", f"{int(total_minutos)} minutos")
       with m_col2:
-        st.metric("Sessões Registradas", f"{len(df_log_valido)}")
+        st.metric("Sessões de Estudo", f"{len(df_log_valido)}")
 
       st.markdown("---")
 
-      df_agrupado = (
+      # GRÁFICO 1: OBRA X TEMPO (%)
+      st.write("### 🍩 1. Porcentagem de Tempo por Obra")
+      df_agrupado_obra = (
           df_log_valido.groupby("Obra")["Minutos_Num"]
           .sum()
           .reset_index()
           .sort_values(by="Minutos_Num", ascending=False)
       )
 
-      df_agrupado["Porcentagem (%)"] = (
-          (df_agrupado["Minutos_Num"] / total_minutos) * 100
-      ).round(1)
-      df_agrupado["Horas"] = (df_agrupado["Minutos_Num"] / 60).round(1)
-      df_agrupado.rename(columns={"Minutos_Num": "Minutos"}, inplace=True)
-
-      st.write("### 🍩 Distribuição Percentual por Obra")
-
-      # --- GRÁFICO DE ROSCA INTERATIVO (STYLE DASHBOARD PRO) ---
-      fig = px.pie(
-          df_agrupado,
-          values="Minutos",
+      fig_obra = px.pie(
+          df_agrupado_obra,
+          values="Minutos_Num",
           names="Obra",
-          hole=0.6,  # Efeito Donut
+          hole=0.55,
           color_discrete_sequence=px.colors.qualitative.Vivid,
       )
-
-      fig.update_traces(
+      fig_obra.update_traces(
           textposition="inside",
           textinfo="percent+label",
           hovertemplate="<b>%{label}</b><br>Tempo: %{value} min<br>Porcentagem: %{percent}",
-          marker=dict(line=dict(color="#FFFFFF", width=2)),
       )
-
-      fig.update_layout(
+      fig_obra.update_layout(
           showlegend=True,
           legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5),
-          margin=dict(t=20, b=20, l=20, r=20),
-          annotations=[dict(text=f"<b>{total_horas}h</b><br>Total", x=0.5, y=0.5, font_size=20, showarrow=False)],
+          margin=dict(t=10, b=10, l=10, r=10),
+      )
+      st.plotly_chart(fig_obra, use_container_width=True)
+
+      st.markdown("---")
+
+      # GRÁFICO 2: TIPO DE ESTUDO X TEMPO (%)
+      st.write("### 🎯 2. Porcentagem por Tipo de Estudo")
+      df_agrupado_tipo = (
+          df_log_valido.groupby("Tipo")["Minutos_Num"]
+          .sum()
+          .reset_index()
+          .sort_values(by="Minutos_Num", ascending=False)
       )
 
-      st.plotly_chart(fig, use_container_width=True)
-
-      st.write("### 📋 Detalhamento por Peça")
-      st.dataframe(
-          df_agrupado[["Obra", "Porcentagem (%)", "Horas", "Minutos"]],
-          hide_index=True,
-          use_container_width=True,
+      fig_tipo = px.pie(
+          df_agrupado_tipo,
+          values="Minutos_Num",
+          names="Tipo",
+          hole=0.55,
+          color_discrete_sequence=px.colors.qualitative.Pastel,
       )
+      fig_tipo.update_traces(
+          textposition="inside",
+          textinfo="percent+label",
+          hovertemplate="<b>%{label}</b><br>Tempo: %{value} min<br>Porcentagem: %{percent}",
+      )
+      fig_tipo.update_layout(
+          showlegend=True,
+          legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5),
+          margin=dict(t=10, b=10, l=10, r=10),
+      )
+      st.plotly_chart(fig_tipo, use_container_width=True)
+
+      st.markdown("---")
+
+      # GRÁFICO 3: OBRA X TIPO DE ESTUDO (BARRAS EMPILHADAS)
+      st.write("### 🎼 3. Distribuição de Foco por Obra (Minutos)")
+      df_obra_tipo = (
+          df_log_valido.groupby(["Obra", "Tipo"])["Minutos_Num"]
+          .sum()
+          .reset_index()
+      )
+
+      fig_obra_tipo = px.bar(
+          df_obra_tipo,
+          x="Obra",
+          y="Minutos_Num",
+          color="Tipo",
+          title="Minutos dedicados por tipo dentro de cada obra",
+          labels={"Minutos_Num": "Minutos Estudados", "Obra": "Peça"},
+          color_discrete_sequence=px.colors.qualitative.Set2,
+          barmode="stack",
+      )
+      fig_obra_tipo.update_layout(
+          legend=dict(orientation="h", yanchor="bottom", y=-0.5, xanchor="center", x=0.5),
+          margin=dict(t=30, b=20, l=10, r=10),
+      )
+      st.plotly_chart(fig_obra_tipo, use_container_width=True)
 
       st.markdown("---")
       st.write("### ✏️ Editar ou Excluir Registro de Tempo")
@@ -374,7 +425,9 @@ with aba3:
           + df_log["Data"]
           + " - "
           + df_log["Obra"]
-          + " ("
+          + " ["
+          + df_log["Tipo"]
+          + "] ("
           + df_log["Minutos"]
           + " min)"
       )
@@ -388,7 +441,7 @@ with aba3:
       item_log = df_log[df_log["Label_Sessao"] == sessao_selecionada].iloc[0]
       row_idx_log = int(item_log["Row_Index"])
 
-      c_log1, c_log2 = st.columns(2)
+      c_log1, c_log2, c_log3 = st.columns(3)
       with c_log1:
         edit_log_min = st.number_input(
             "Novos Minutos:",
@@ -398,6 +451,18 @@ with aba3:
             key="edit_log_min_val",
         )
       with c_log2:
+        idx_tipo_atual = (
+            tipos_estudo_opcoes.index(item_log["Tipo"])
+            if item_log["Tipo"] in tipos_estudo_opcoes
+            else 0
+        )
+        edit_log_tipo = st.selectbox(
+            "Novo Tipo:",
+            tipos_estudo_opcoes,
+            index=idx_tipo_atual,
+            key="edit_log_tipo_val",
+        )
+      with c_log3:
         edit_log_obs = st.text_input(
             "Nova Observação:",
             value=item_log["Observacao"],
@@ -407,9 +472,10 @@ with aba3:
       btn_log_c1, btn_log_c2 = st.columns(2)
 
       with btn_log_c1:
-        if st.button("Atualizar Registro de Tempo"):
+        if st.button("Atualizar Registro"):
           sheet_log.update_cell(row_idx_log, 3, str(edit_log_min))
           sheet_log.update_cell(row_idx_log, 4, edit_log_obs)
+          sheet_log.update_cell(row_idx_log, 5, edit_log_tipo)
           st.success("Registro atualizado com sucesso!")
           st.rerun()
 
@@ -428,14 +494,14 @@ with aba3:
       st.markdown("---")
       with st.expander("📜 Histórico Recente Completo"):
         st.dataframe(
-            df_log[["Data", "Obra", "Minutos", "Observacao"]].iloc[::-1],
+            df_log[["Data", "Obra", "Tipo", "Minutos", "Observacao"]].iloc[::-1],
             hide_index=True,
             use_container_width=True,
         )
     else:
       st.info("Nenhum registro de tempo salvo ainda. Faça seu primeiro registro na Aba 'Timer/Estudos'.")
   except Exception as e:
-    st.warning("Certifique-se de que a aba 'Log_Tempo' foi criada na planilha do Google Drive.")
+    st.warning("Certifique-se de que a aba 'Log_Tempo' foi criada na planilha do Google Drive com as colunas corretas.")
 
 # --- ABA 4: LEITURAS ---
 with aba4:
