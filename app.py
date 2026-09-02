@@ -69,12 +69,20 @@ with aba2:
   sheet = client.open("Doutorado_Estudos").worksheet("Repertorio")
   data = sheet.get_all_values()
 
+  # Lista de opções refinadas para o status musical
+  opcoes_status = [
+      "1. Não Iniciada",
+      "2. Leitura / Decodificação",
+      "3. Polimento Técnico",
+      "4. Maturação Musical",
+      "5. Manutenção",
+      "6. Pronta / Performada",
+  ]
+
   with st.expander("➕ Adicionar Obra"):
     nova_obra = st.text_input("Nome da Obra")
     novo_status = st.selectbox(
-        "Status",
-        ["Não Iniciado", "Em Andamento", "Pronto"],
-        key="status_nova_obra",
+        "Status", opcoes_status, key="status_nova_obra"
     )
     if st.button("Salvar Obra"):
       sheet.append_row([nova_obra, novo_status])
@@ -87,11 +95,7 @@ with aba2:
     obra_edit = st.selectbox(
         "Selecione:", df["Obra"].tolist(), key="select_obra_edit"
     )
-    status_edit = st.selectbox(
-        "Novo:",
-        ["Não Iniciado", "Em Andamento", "Pronto"],
-        key="status_edit_val",
-    )
+    status_edit = st.selectbox("Novo:", opcoes_status, key="status_edit_val")
     if st.button("Atualizar"):
       index = df[df["Obra"] == obra_edit].index[0] + 2
       sheet.update_cell(index, 2, status_edit)
