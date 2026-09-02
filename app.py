@@ -1,13 +1,27 @@
 from datetime import date
+from google.oauth2.service_account import Credentials
+import gspread
 import pandas as pd
 import streamlit as st
 
+
+def get_client():
+  creds_dict = dict(st.secrets["gcp_service_account"])
+  if "private_key" in creds_dict:
+    # Remove eventuais barras invertidas literais e normaliza as quebras de linha
+    creds_dict["private_key"] = (
+        creds_dict["private_key"].replace("\\n", "\n").strip()
+    )
+  scope = [
+      "https://www.googleapis.com/auth/spreadsheets",
+      "https://www.googleapis.com/auth/drive",
+  ]
+  creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
+  return gspread.authorize(creds)
+
+
 st.set_page_config(page_title="Doutorado UFRGS", page_icon="🎸", layout="centered")
 st.title("🎸 Doutorado UFRGS")
-
-# Conexão nativa com o Google Sheets via Streamlit
-# (O Streamlit gerencia a autenticação automaticamente pelos Secrets)
-conn = st.connection("gsheets", type="gspread")
 
 aba1, aba2, aba3 = st.tabs(["⏱️ Timer/Estudos", "🎼 Repertório", "📚 Leituras"])
 
@@ -46,10 +60,9 @@ with aba1:
 # --- ABA 2: REPERTÓRIO ---
 with aba2:
   st.subheader("🎼 Repertório")
-
-  # Lê a aba Repertorio
-  sheet_rep = conn.open("Doutorado_Estudos").worksheet("Repertorio")
-  data = sheet_rep.get_all_values()
+  client = get_client()
+  sheet = client.open("Doutorado_Estudos").worksheet("Repertorio")
+  data = sheet.get_all_values()
 
   with st.expander("➕ Adicionar Obra"):
     nova_obra = st.text_input("Nome da Obra")
@@ -59,7 +72,7 @@ with aba2:
         key="status_nova_obra",
     )
     if st.button("Salvar Obra"):
-      sheet_rep.append_row([nova_obra, novo_status])
+      sheet.append_row([nova_obra, novo_status])
       st.rerun()
 
   if len(data) > 1:
@@ -76,13 +89,14 @@ with aba2:
     )
     if st.button("Atualizar"):
       index = df[df["Obra"] == obra_edit].index[0] + 2
-      sheet_rep.update_cell(index, 2, status_edit)
+      sheet.update_cell(index, 2, status_edit)
       st.rerun()
 
 # --- ABA 3: LEITURAS ---
 with aba3:
   st.subheader("📚 Leituras")
-  sheet_l = conn.open("Doutorado_Estudos").worksheet("Leituras")
+  client = get_client()
+  sheet_l = client.open("Doutorado_Estudos").worksheet("Leituras")
 
   novo_artigo = st.text_input("Novo Artigo/Livro", key="input_novo_artigo")
   if st.button("Adicionar Leitura"):
