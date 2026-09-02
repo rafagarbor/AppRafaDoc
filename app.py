@@ -87,10 +87,22 @@ with aba1:
         unsafe_allow_html=True,
     )
 
+  with st.expander("⚙️ Tempo Personalizado"):
+    mins_custom = st.number_input(
+        "Minutos de estudo:", min_value=1, max_value=180, value=25
+    )
+    st.markdown(
+        gerar_botao_timer(
+            mins_custom,
+            cor="#1976D2",
+            texto_personalizado=f"⏰ Iniciar Timer Customizado ({mins_custom} min)",
+        ),
+        unsafe_allow_html=True,
+    )
+
   st.markdown("---")
   st.subheader("⏱️ Registrar Tempo Estudado por Peça")
 
-  # Carrega as obras cadastradas no repertório
   sheet_rep = client.open("Doutorado_Estudos").worksheet("Repertorio")
   data_rep = sheet_rep.get_all_values()
 
@@ -274,40 +286,49 @@ with aba3:
     data_log = sheet_log.get_all_values()
 
     if len(data_log) > 1:
-      df_log = pd.DataFrame(
-          data_log[1:], columns=["Data", "Obra", "Minutos", "Observacao"]
-      )
-      df_log["Minutos"] = pd.to_numeric(df_log["Minutos"], errors="coerce")
-      df_log = df_log.dropna(subset=["Minutos"])
+      rows_log = []
+      for i, r in enumerate(data_log[1:], start=2):
+        d_data = r[0] if len(r) > 0 else ""
+        d_obra = r[1] if len(r) > 1 else ""
+        d_min = r[2] if len(r) > 2 else "0"
+        d_obs = r[3] if len(r) > 3 else ""
+        rows_log.append({
+            "Row_Index": i,
+            "Data": d_data,
+            "Obra": d_obra,
+            "Minutos": d_min,
+            "Observacao": d_obs,
+        })
 
-      total_minutos = df_log["Minutos"].sum()
+      df_log = pd.DataFrame(rows_log)
+      df_log["Minutos_Num"] = pd.to_numeric(df_log["Minutos"], errors="coerce")
+      df_log_valido = df_log.dropna(subset=["Minutos_Num"])
+
+      total_minutos = df_log_valido["Minutos_Num"].sum()
       total_horas = round(total_minutos / 60, 1)
 
       m_col1, m_col2 = st.columns(2)
       with m_col1:
         st.metric("Total de Tempo Dedicado", f"{total_horas} hrs", f"{int(total_minutos)} minutos")
       with m_col2:
-        st.metric("Sessões de Estudo Registradas", f"{len(df_log)}")
+        st.metric("Sessões Registradas", f"{len(df_log_valido)}")
 
       st.markdown("---")
 
-      # Agrupa o tempo por obra
       df_agrupado = (
-          df_log.groupby("Obra")["Minutos"]
+          df_log_valido.groupby("Obra")["Minutos_Num"]
           .sum()
           .reset_index()
-          .sort_values(by="Minutos", ascending=False)
+          .sort_values(by="Minutos_Num", ascending=False)
       )
 
-      # Calcula Porcentagem
       df_agrupado["Porcentagem (%)"] = (
-          (df_agrupado["Minutos"] / total_minutos) * 100
+          (df_agrupado["Minutos_Num"] / total_minutos) * 100
       ).round(1)
-      df_agrupado["Horas"] = (df_agrupado["Minutos"] / 60).round(1)
+      df_agrupado["Horas"] = (df_agrupado["Minutos_Num"] / 60).round(1)
+      df_agrupado.rename(columns={"Minutos_Num": "Minutos"}, inplace=True)
 
       st.write("### 📈 Porcentagem de Tempo por Obra")
-
-      # Exibição do gráfico em barra nativo do Streamlit
       st.bar_chart(
           data=df_agrupado.set_index("Obra")["Porcentagem (%)"],
           use_container_width=True,
@@ -321,7 +342,68 @@ with aba3:
       )
 
       st.markdown("---")
-      with st.expander("📜 Histórico de Sessões Recentes"):
+      st.write("### ✏️ Editar ou Excluir Registro de Tempo")
+
+      df_log["Label_Sessao"] = (
+          "Linha "
+          + df_log["Row_Index"].astype(str)
+          + ": "
+          + df_log["Data"]
+          + " - "
+          + df_log["Obra"]
+          + " ("
+          + df_log["Minutos"]
+          + " min)"
+      )
+
+      sessao_selecionada = st.selectbox(
+          "Selecione o registro para alterar:",
+          options=df_log["Label_Sessao"].tolist(),
+          key="select_log_edit",
+      )
+
+      item_log = df_log[df_log["Label_Sessao"] == sessao_selecionada].iloc[0]
+      row_idx_log = int(item_log["Row_Index"])
+
+      c_log1, c_log2 = st.columns(2)
+      with c_log1:
+        edit_log_min = st.number_input(
+            "Novos Minutos:",
+            min_value=1,
+            max_value=300,
+            value=int(item_log["Minutos_Num"]) if pd.notnull(item_log["Minutos_Num"]) else 30,
+            key="edit_log_min_val",
+        )
+      with c_log2:
+        edit_log_obs = st.text_input(
+            "Nova Observação:",
+            value=item_log["Observacao"],
+            key="edit_log_obs_val",
+        )
+
+      btn_log_c1, btn_log_c2 = st.columns(2)
+
+      with btn_log_c1:
+        if st.button("Atualizar Registro de Tempo"):
+          sheet_log.update_cell(row_idx_log, 3, str(edit_log_min))
+          sheet_log.update_cell(row_idx_log, 4, edit_log_obs)
+          st.success("Registro atualizado com sucesso!")
+          st.rerun()
+
+      with btn_log_c2:
+        confirmar_del_log = st.checkbox(
+            "Confirmar exclusão da sessão", key="check_del_log"
+        )
+        if st.button("Excluir Sessão", type="primary"):
+          if confirmar_del_log:
+            sheet_log.delete_rows(row_idx_log)
+            st.success("Sessão excluída com sucesso!")
+            st.rerun()
+          else:
+            st.warning("Marque a caixa de confirmação antes de excluir.")
+
+      st.markdown("---")
+      with st.expander("📜 Histórico Recente Completo"):
         st.dataframe(
             df_log[["Data", "Obra", "Minutos", "Observacao"]].iloc[::-1],
             hide_index=True,
