@@ -20,6 +20,21 @@ def get_client():
   return gspread.authorize(creds)
 
 
+def gerar_botao_timer(minutos, cor="#4CAF50", texto_personalizado=None):
+  """Função auxiliar para gerar botões HTML de timer compatíveis com o iOS Shortcut."""
+  url_timer = (
+      f"shortcuts://run-shortcut?name=IniciarTimer&input=text&text={minutos}"
+  )
+  rotulo = texto_personalizado if texto_personalizado else f"⏱️ {minutos} min"
+  return f"""
+    <a href="{url_timer}" style="text-decoration: none;">
+        <div style="background-color: {cor}; color: white; padding: 12px; text-align: center; border-radius: 8px; font-size: 16px; font-weight: bold; margin-bottom: 8px;">
+            {rotulo}
+        </div>
+    </a>
+    """
+
+
 st.set_page_config(page_title="Doutorado UFRGS", page_icon="🎸", layout="centered")
 st.title("🎸 Doutorado UFRGS")
 
@@ -27,20 +42,49 @@ aba1, aba2, aba3 = st.tabs(["⏱️ Timer/Estudos", "🎼 Repertório", "📚 Le
 
 # --- ABA 1: TIMER E REGISTROS ---
 with aba1:
-  st.subheader("⏱️ Temporizador (Nativo iOS)")
-  mins = st.number_input(
-      "Minutos de estudo:", min_value=1, max_value=180, value=45
-  )
+  st.subheader("⏱️ Temporizador Rápido (Nativo iOS)")
+  st.write("Selecione um bloco de tempo para disparar o timer no iPad:")
 
-  url_timer = f"shortcuts://run-shortcut?name=IniciarTimer&input=text&text={mins}"
-  html_timer = f"""
-    <a href="{url_timer}" style="text-decoration: none;">
-        <div style="background-color: #4CAF50; color: white; padding: 15px; text-align: center; border-radius: 10px; font-size: 18px; font-weight: bold;">
-            ⏰ Iniciar Timer no iPad ({mins} min)
-        </div>
-    </a>
-    """
-  st.markdown(html_timer, unsafe_allow_html=True)
+  # Botões rápidos dispostos em colunas
+  col1, col2, col3, col4 = st.columns(4)
+
+  with col1:
+    st.markdown(
+        gerar_botao_timer(45, cor="#2E7D32", texto_personalizado="🧠 45 min"),
+        unsafe_allow_html=True,
+    )
+
+  with col2:
+    st.markdown(
+        gerar_botao_timer(30, cor="#388E3C", texto_personalizado="🎯 30 min"),
+        unsafe_allow_html=True,
+    )
+
+  with col3:
+    st.markdown(
+        gerar_botao_timer(10, cor="#F57C00", texto_personalizado="☕ 10 min"),
+        unsafe_allow_html=True,
+    )
+
+  with col4:
+    st.markdown(
+        gerar_botao_timer(5, cor="#D32F2F", texto_personalizado="⚡ 5 min"),
+        unsafe_allow_html=True,
+    )
+
+  # Opção para tempo customizado
+  with st.expander("⚙️ Tempo Personalizado"):
+    mins_custom = st.number_input(
+        "Minutos de estudo:", min_value=1, max_value=180, value=25
+    )
+    st.markdown(
+        gerar_botao_timer(
+            mins_custom,
+            cor="#1976D2",
+            texto_personalizado=f"⏰ Iniciar Timer Customizado ({mins_custom} min)",
+        ),
+        unsafe_allow_html=True,
+    )
 
   st.markdown("---")
   st.subheader("📝 Reflexão (Diário iOS)")
