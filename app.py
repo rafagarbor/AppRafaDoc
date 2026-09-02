@@ -32,14 +32,16 @@ with aba1:
       "Minutos de estudo:", min_value=1, max_value=180, value=45
   )
 
+  # Link para o Atalho IniciarTimer com HTML corrigido
   url_timer = f"shortcuts://run-shortcut?name=IniciarTimer&input=text&text={mins}"
-  st.markdown(
-      f'<a href="{url_timer}" style="text-decoration:none;">'
-      '<div style="background-color:#4CAF50; color:white; padding:15px;'
-      " text-align:center; border-radius:10px; font-size:18px;>"
-      f"⏰ Iniciar Timer no iPad ({mins} min)</div></a>",
-      unsafe_allow_html=True,
-  )
+  html_timer = f"""
+    <a href="{url_timer}" style="text-decoration: none;">
+        <div style="background-color: #4CAF50; color: white; padding: 15px; text-align: center; border-radius: 10px; font-size: 18px; font-weight: bold;">
+            ⏰ Iniciar Timer no iPad ({mins} min)
+        </div>
+    </a>
+    """
+  st.markdown(html_timer, unsafe_allow_html=True)
 
   st.markdown("---")
   st.subheader("📝 Reflexão (Diário iOS)")
@@ -49,11 +51,14 @@ with aba1:
     if resumo:
       texto_fmt = resumo.replace(" ", "_")
       url_diario = f"shortcuts://run-shortcut?name=RegistrarEstudo&input=text&text={texto_fmt}"
-      st.markdown(
-          f'<a href="{url_diario}" target="_blank">Clique aqui para enviar ao'
-          " Diário</a>",
-          unsafe_allow_html=True,
-      )
+      html_diario = f"""
+            <a href="{url_diario}" target="_blank" style="text-decoration: none;">
+                <div style="background-color: #008CBA; color: white; padding: 12px; text-align: center; border-radius: 8px; font-size: 16px; margin-top: 10px;">
+                    📲 Clique aqui para enviar ao Diário
+                </div>
+            </a>
+            """
+      st.markdown(html_diario, unsafe_allow_html=True)
     else:
       st.warning("Escreva o resumo primeiro.")
 
