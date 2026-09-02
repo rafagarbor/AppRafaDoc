@@ -1,6 +1,7 @@
 import base64
 from datetime import date
 import json
+import time
 import urllib.parse
 from google.oauth2.service_account import Credentials
 import gspread
@@ -9,7 +10,7 @@ import plotly.express as px
 import streamlit as st
 
 
-# --- CACHE E CONEXÃO ÚNICA ---
+# --- CACHE E CONEXÃO SEGURA ---
 @st.cache_resource
 def get_client():
   b64_str = st.secrets["part1"] + st.secrets["part2"]
@@ -26,15 +27,18 @@ def get_client():
 
 @st.cache_resource
 def get_spreadsheet():
-  """Abre a planilha uma única vez e guarda em cache global do app."""
+  """Abre a planilha uma única vez com tratamento de taxa limite."""
   client = get_client()
+  # Pequena pausa para evitar estouro de requisição simultânea
+  time.sleep(0.5)
   return client.open("Doutorado_Estudos")
 
 
-@st.cache_data(ttl=300)  # Cache de 5 minutos para poupar a cota da API
+@st.cache_data(ttl=600)  # Cache de 10 minutos para poupar a cota da API
 def carregar_dados_planilha(nome_aba):
   sh = get_spreadsheet()
   sheet = sh.worksheet(nome_aba)
+  time.sleep(0.3)  # Pausa de respiro para a API do Google
   return sheet.get_all_values()
 
 
@@ -64,13 +68,15 @@ aba1, aba2, aba3, aba4 = st.tabs(
     ["⏱️ Timer/Estudos", "🎼 Repertório", "📊 Análise de Tempo", "📚 Leituras"]
 )
 
-# Inicializa a planilha globalmente de forma segura
+# Inicializa a planilha globalmente com tratamento amigável de erro 429
 try:
   sh_global = get_spreadsheet()
 except Exception as e:
   st.error(
-      f"Erro ao conectar com a planilha do Google Sheets. Verifique suas"
-      f" credenciais nos Secrets. Detalhes: {e}"
+      "⚠️ **Limite de requisições do Google atingido (Erro 429).** "
+      "O Google restringe temporariamente o acesso quando há muitas leituras seguidas. "
+      "Aguarde cerca de **1 minuto** e atualize a página (F5).\n\n"
+      f"Detalhes técnicos: {e}"
   )
   st.stop()
 
