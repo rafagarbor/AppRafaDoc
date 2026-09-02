@@ -5,10 +5,12 @@ import pandas as pd
 import streamlit as st
 
 
-# Configuração moderna e segura da conexão com Google Sheets
 def get_client():
-  # Pega o dicionário de segredos diretamente do Streamlit
   creds_dict = dict(st.secrets["gcp_service_account"])
+  if "private_key" in creds_dict:
+    creds_dict["private_key"] = creds_dict["private_key"].replace(
+        "\\n", "\n"
+    )
   scope = [
       "https://www.googleapis.com/auth/spreadsheets",
       "https://www.googleapis.com/auth/drive",
@@ -29,7 +31,6 @@ with aba1:
       "Minutos de estudo:", min_value=1, max_value=180, value=45
   )
 
-  # Link para o Atalho IniciarTimer
   url_timer = f"shortcuts://run-shortcut?name=IniciarTimer&input=text&text={mins}"
   st.markdown(
       f'<a href="{url_timer}" style="text-decoration:none;">'
