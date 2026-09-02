@@ -7,15 +7,15 @@ import streamlit as st
 
 
 def get_client():
-  # Pega o dicionário de segredos do Streamlit
-  creds_dict = dict(st.secrets["gcp_service_account"])
+  # Junta os pedacinhos salvos nos secrets para formar a string completa
+  b64_str = st.secrets["part1"] + st.secrets["part2"]
+  json_bytes = base64.b64decode(b64_str)
+  creds_dict = json.loads(json_bytes.decode("utf-8"))
 
   scope = [
       "https://www.googleapis.com/auth/spreadsheets",
       "https://www.googleapis.com/auth/drive",
   ]
-
-  # Cria as credenciais diretamente do dicionário ignorando os bugs de string do TOML
   creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
   return gspread.authorize(creds)
 
