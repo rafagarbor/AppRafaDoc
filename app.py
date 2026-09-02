@@ -158,17 +158,46 @@ with aba2:
     novo_status = st.selectbox(
         "Status", opcoes_status, key="status_nova_obra"
     )
+    link_goodnotes = st.text_input(
+        "Link / URL da Partitura no GoodNotes (Opcional):",
+        help="Cole aqui o link do documento do GoodNotes para abrir a partitura direto no iPad.",
+    )
+
     if st.button("Salvar Obra"):
       if nova_obra:
-        sheet.append_row([nova_obra, novo_status])
+        sheet.append_row([nova_obra, novo_status, link_goodnotes])
         st.success("Obra adicionada!")
         st.rerun()
       else:
         st.warning("Digite o nome da obra.")
 
   if len(data) > 1:
-    df = pd.DataFrame(data[1:], columns=["Obra", "Status"])
-    st.table(df)
+    # Trata dinamicamente caso a coluna de link GoodNotes ainda não exista nas linhas antigas
+    rows = []
+    for r in data[1:]:
+      obra = r[0] if len(r) > 0 else ""
+      status = r[1] if len(r) > 1 else ""
+      gn_link = r[2] if len(r) > 2 else ""
+      rows.append([obra, status, gn_link])
+
+    df = pd.DataFrame(rows, columns=["Obra", "Status", "GoodNotes Link"])
+
+    # Exibe a lista com botão de abrir no GoodNotes
+    for idx, row in df.iterrows():
+      col_a, col_b, col_c = st.columns([3, 2, 2])
+      with col_a:
+        st.write(f"**{row['Obra']}**")
+      with col_b:
+        st.caption(f"Status: {row['Status']}")
+      with col_c:
+        if row["GoodNotes Link"]:
+          st.markdown(
+              f"[📖 Abrir Partitura]({row['GoodNotes Link']})",
+              unsafe_allow_html=True,
+          )
+        else:
+          st.caption("Sem link")
+      st.divider()
 
     st.markdown("---")
     st.markdown("### ✏️ Editar ou Excluir Obra")
@@ -177,19 +206,38 @@ with aba2:
         "Selecione a obra:", df["Obra"].tolist(), key="select_obra_edit"
     )
 
+    item_obra = df[df["Obra"] == obra_edit].iloc[0]
+    status_obra_atual = item_obra["Status"]
+    gn_link_atual = item_obra["GoodNotes Link"]
+
+    idx_st = (
+        opcoes_status.index(status_obra_atual)
+        if status_obra_atual in opcoes_status
+        else 0
+    )
+
+    status_edit = st.selectbox(
+        "Novo Status:", opcoes_status, index=idx_st, key="status_edit_val"
+    )
+    gn_edit = st.text_input(
+        "Link GoodNotes:", value=gn_link_atual, key="gn_edit_val"
+    )
+
     col1, col2 = st.columns(2)
 
     with col1:
-      status_edit = st.selectbox("Novo Status:", opcoes_status, key="status_edit_val")
-      if st.button("Atualizar Status"):
+      if st.button("Atualizar Obra"):
         index = df[df["Obra"] == obra_edit].index[0] + 2
         sheet.update_cell(index, 2, status_edit)
-        st.success("Status atualizado!")
+        sheet.update_cell(index, 3, gn_edit)
+        st.success("Obra atualizada!")
         st.rerun()
 
     with col2:
       st.write("🗑️ **Excluir Registro**")
-      confirmar_del_obra = st.checkbox("Confirmar exclusão", key="check_del_obra")
+      confirmar_del_obra = st.checkbox(
+          "Confirmar exclusão", key="check_del_obra"
+      )
       if st.button("Excluir Obra", type="primary"):
         if confirmar_del_obra:
           index = df[df["Obra"] == obra_edit].index[0] + 2
@@ -209,7 +257,9 @@ with aba3:
 
   with st.expander("➕ Adicionar Nova Leitura"):
     novo_artigo = st.text_input("Título / Autor do Texto", key="input_novo_artigo")
-    status_leitura = st.selectbox("Status", opcoes_leitura, key="status_novo_artigo")
+    status_leitura = st.selectbox(
+        "Status", opcoes_leitura, key="status_novo_artigo"
+    )
     anotacoes_tese = st.text_area(
         "Notas / Citações Relevantes para a Tese:",
         key="input_anotacoes_tese",
@@ -234,7 +284,9 @@ with aba3:
       anotacao = r[2] if len(r) > 2 else ""
       rows.append([artigo, status, anotacao])
 
-    df_l = pd.DataFrame(rows, columns=["Artigo / Livro", "Status", "Anotações Tese"])
+    df_l = pd.DataFrame(
+        rows, columns=["Artigo / Livro", "Status", "Anotações Tese"]
+    )
     st.table(df_l)
 
     st.markdown("---")
@@ -250,7 +302,11 @@ with aba3:
     status_atual = item_atual["Status"]
     anotacao_atual = item_atual["Anotações Tese"]
 
-    idx_status = opcoes_leitura.index(status_atual) if status_atual in opcoes_leitura else 0
+    idx_status = (
+        opcoes_leitura.index(status_atual)
+        if status_atual in opcoes_leitura
+        else 0
+    )
 
     novo_status_leitura = st.selectbox(
         "Atualizar Status:",
@@ -277,7 +333,9 @@ with aba3:
 
     with col_l2:
       st.write("🗑️ **Excluir Registro**")
-      confirmar_del_leit = st.checkbox("Confirmar exclusão", key="check_del_leit")
+      confirmar_del_leit = st.checkbox(
+          "Confirmar exclusão", key="check_del_leit"
+      )
       if st.button("Excluir Leitura", type="primary"):
         if confirmar_del_leit:
           row_idx = df_l[df_l["Artigo / Livro"] == artigo_edit].index[0] + 2
