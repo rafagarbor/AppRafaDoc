@@ -1,5 +1,5 @@
-from datetime import date
-import io
+import base64
+import json
 from google.oauth2.service_account import Credentials
 import gspread
 import pandas as pd
@@ -7,7 +7,7 @@ import streamlit as st
 
 
 def get_client():
-  # Junta os pedacinhos salvos nos secrets para formar a string completa
+  # Junta as partes da string Base64 salvas nos Secrets
   b64_str = st.secrets["part1"] + st.secrets["part2"]
   json_bytes = base64.b64decode(b64_str)
   creds_dict = json.loads(json_bytes.decode("utf-8"))
