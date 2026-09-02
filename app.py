@@ -90,20 +90,38 @@ with aba1:
   st.subheader("📝 Reflexão (Diário iOS)")
   resumo = st.text_input("Resumo da prática:")
 
-  if st.button("Registrar no Diário"):
-    if resumo:
-      texto_fmt = resumo.replace(" ", "_")
-      url_diario = f"shortcuts://run-shortcut?name=RegistrarEstudo&input=text&text={texto_fmt}"
-      html_diario = f"""
-            <a href="{url_diario}" target="_blank" style="text-decoration: none;">
-                <div style="background-color: #008CBA; color: white; padding: 12px; text-align: center; border-radius: 8px; font-size: 16px; margin-top: 10px;">
-                    📲 Clique aqui para enviar ao Diário
+  if resumo:
+    texto_fmt = resumo.replace(" ", "_")
+
+    col_d1, col_d2 = st.columns(2)
+
+    with col_d1:
+      # Insere tag #Violao no início da entrada
+      texto_violao = f"%23Violao_{texto_fmt}"
+      url_v = f"shortcuts://run-shortcut?name=RegistrarEstudo&input=text&text={texto_violao}"
+      html_v = f"""
+            <a href="{url_v}" target="_blank" style="text-decoration: none;">
+                <div style="background-color: #008CBA; color: white; padding: 12px; text-align: center; border-radius: 8px; font-size: 15px; font-weight: bold; margin-top: 10px;">
+                    🎸 Registrar em Violão
                 </div>
             </a>
             """
-      st.markdown(html_diario, unsafe_allow_html=True)
-    else:
-      st.warning("Escreva o resumo primeiro.")
+      st.markdown(html_v, unsafe_allow_html=True)
+
+    with col_d2:
+      # Insere tag #Doutorado no início da entrada
+      texto_doutorado = f"%23Doutorado_{texto_fmt}"
+      url_d = f"shortcuts://run-shortcut?name=RegistrarEstudo&input=text&text={texto_doutorado}"
+      html_d = f"""
+            <a href="{url_d}" target="_blank" style="text-decoration: none;">
+                <div style="background-color: #8E44AD; color: white; padding: 12px; text-align: center; border-radius: 8px; font-size: 15px; font-weight: bold; margin-top: 10px;">
+                    🎓 Registrar em Doutorado
+                </div>
+            </a>
+            """
+      st.markdown(html_d, unsafe_allow_html=True)
+  else:
+    st.info("Digite o resumo da sua prática acima para habilitar os botões de envio ao Diário.")
 
 # --- ABA 2: REPERTÓRIO ---
 with aba2:
