@@ -46,21 +46,40 @@ def limpar_cache():
 
 
 def gerar_botao_timer(minutos, cor="#2E7D32", texto_personalizado=None):
-  """Gera botões HTML com fonte branca e negrito para disparar o timer via iOS."""
+  """Gera botões HTML com forçamento rigoroso de fonte branca e negrito para o iOS."""
   url_timer = (
       f"shortcuts://run-shortcut?name=IniciarTimer&input=text&text={minutos}"
   )
   rotulo = texto_personalizado if texto_personalizado else f"⏱️ {minutos} min"
   return f"""
-    <a href="{url_timer}" style="text-decoration: none;">
+    <a href="{url_timer}" class="custom-btn-link" style="text-decoration: none !important;">
         <div style="background-color: {cor}; padding: 12px; text-align: center; border-radius: 8px; margin-bottom: 8px;">
-            <span style="color: #FFFFFF !important; font-size: 16px; font-weight: bold; text-decoration: none;">{rotulo}</span>
+            <span style="color: #FFFFFF !important; font-size: 16px; font-weight: bold; text-decoration: none !important;">{rotulo}</span>
         </div>
     </a>
     """
 
 
 st.set_page_config(page_title="Doutorado UFRGS", page_icon="🎸", layout="centered")
+
+# --- CSS GLOBAL PARA FORÇAR CORES DOS BOTÕES ---
+st.markdown(
+    """
+    <style>
+    /* Força qualquer link dentro de nossos componentes personalizados a ficar branco e sem sublinhado */
+    .custom-btn-link, .custom-btn-link *, a.custom-btn-link, a.custom-btn-link span {
+        color: #FFFFFF !important;
+        text-decoration: none !important;
+    }
+    .custom-btn-link:hover, .custom-btn-link *:hover {
+        color: #FFFFFF !important;
+        opacity: 0.9;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 st.title("🎸 Doutorado UFRGS")
 
 aba1, aba2, aba3, aba4 = st.tabs(
@@ -222,10 +241,11 @@ with aba1:
     texto_v_encoded = urllib.parse.quote(texto_violao)
     url_v = f"shortcuts://run-shortcut?name=RegistrarEstudo&input=text&text={texto_v_encoded}"
     st.markdown(
-        f'<a href="{url_v}" style="text-decoration:none;"><div'
-        ' style="background-color:#008CBA; padding:12px; text-align:center;'
-        ' border-radius:8px; margin-top:8px;"><span style="color: #FFFFFF'
-        ' !important; font-weight: bold; font-size: 15px;">🚀 Enviar ao Diário'
+        f'<a href="{url_v}" class="custom-btn-link" style="text-decoration: none'
+        ' !important;"><div style="background-color:#008CBA; padding:12px;'
+        ' text-align:center; border-radius:8px; margin-top:8px;"><span'
+        ' style="color: #FFFFFF !important; font-weight: bold; font-size: 15px;'
+        ' text-decoration: none !important;">🚀 Enviar ao Diário'
         " (Violão)</span></div></a>",
         unsafe_allow_html=True,
     )
@@ -235,10 +255,11 @@ with aba1:
     texto_d_encoded = urllib.parse.quote(texto_doutorado)
     url_d = f"shortcuts://run-shortcut?name=RegistrarEstudo&input=text&text={texto_d_encoded}"
     st.markdown(
-        f'<a href="{url_d}" style="text-decoration:none;"><div'
-        ' style="background-color:#6C3483; padding:12px; text-align:center;'
-        ' border-radius:8px; margin-top:8px;"><span style="color: #FFFFFF'
-        ' !important; font-weight: bold; font-size: 15px;">🚀 Enviar ao Diário'
+        f'<a href="{url_d}" class="custom-btn-link" style="text-decoration: none'
+        ' !important;"><div style="background-color:#6C3483; padding:12px;'
+        ' text-align:center; border-radius:8px; margin-top:8px;"><span'
+        ' style="color: #FFFFFF !important; font-weight: bold; font-size: 15px;'
+        ' text-decoration: none !important;">🚀 Enviar ao Diário'
         " (Doutorado)</span></div></a>",
         unsafe_allow_html=True,
     )
@@ -293,12 +314,13 @@ with aba2:
           link_val = row["GoodNotes Link"]
           if link_val and link_val.strip() != "":
             st.markdown(
-                f'<a href="{link_val}" target="_blank" style="text-decoration:'
-                ' none;"><div style="background-color: #1E8449; padding: 8px'
-                ' 12px; text-align: center; border-radius: 6px; box-shadow:'
-                ' 0px 1px 3px rgba(0,0,0,0.2);"><span style="color: #FFFFFF'
-                ' !important; font-size: 13px; font-weight: bold;">🎵 Abrir'
-                " Partitura</span></div></a>",
+                f'<a href="{link_val}" target="_blank" class="custom-btn-link"'
+                ' style="text-decoration: none !important;"><div'
+                ' style="background-color: #1E8449; padding: 8px 12px;'
+                ' text-align: center; border-radius: 6px; box-shadow: 0px 1px'
+                ' 3px rgba(0,0,0,0.2);"><span style="color: #FFFFFF !important;'
+                ' font-size: 13px; font-weight: bold; text-decoration: none'
+                ' !important;">🎵 Abrir Partitura</span></div></a>',
                 unsafe_allow_html=True,
             )
           else:
@@ -578,7 +600,7 @@ with aba4:
     data_l = carregar_dados_planilha("Leituras")
 
     with st.expander("➕ Adicionar Nova Leitura"):
-      novo_artigo = st.text_input("Título / Autor do Texto", key="input_novo_artigo")
+      novo_artigo = st.text_input("Título / Autor du Texto", key="input_novo_artigo")
       status_leitura = st.selectbox(
           "Status", opcoes_leitura, key="status_novo_artigo"
       )
