@@ -83,21 +83,45 @@ with aba2:
         "Status", opcoes_status, key="status_nova_obra"
     )
     if st.button("Salvar Obra"):
-      sheet.append_row([nova_obra, novo_status])
-      st.rerun()
+      if nova_obra:
+        sheet.append_row([nova_obra, novo_status])
+        st.success("Obra adicionada!")
+        st.rerun()
+      else:
+        st.warning("Digite o nome da obra.")
 
   if len(data) > 1:
     df = pd.DataFrame(data[1:], columns=["Obra", "Status"])
     st.table(df)
-    st.markdown("### Editar Status")
+
+    st.markdown("---")
+    st.markdown("### ✏️ Editar ou Excluir Obra")
+
     obra_edit = st.selectbox(
-        "Selecione:", df["Obra"].tolist(), key="select_obra_edit"
+        "Selecione a obra:", df["Obra"].tolist(), key="select_obra_edit"
     )
-    status_edit = st.selectbox("Novo:", opcoes_status, key="status_edit_val")
-    if st.button("Atualizar Obra"):
-      index = df[df["Obra"] == obra_edit].index[0] + 2
-      sheet.update_cell(index, 2, status_edit)
-      st.rerun()
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+      status_edit = st.selectbox("Novo Status:", opcoes_status, key="status_edit_val")
+      if st.button("Atualizar Status"):
+        index = df[df["Obra"] == obra_edit].index[0] + 2
+        sheet.update_cell(index, 2, status_edit)
+        st.success("Status atualizado!")
+        st.rerun()
+
+    with col2:
+      st.write("🗑️ **Excluir Registro**")
+      confirmar_del_obra = st.checkbox("Confirmar exclusão", key="check_del_obra")
+      if st.button("Excluir Obra", type="primary"):
+        if confirmar_del_obra:
+          index = df[df["Obra"] == obra_edit].index[0] + 2
+          sheet.delete_rows(index)
+          st.success(f"'{obra_edit}' removida com sucesso!")
+          st.rerun()
+        else:
+          st.warning("Marque a caixa de confirmação antes de excluir.")
 
 # --- ABA 3: LEITURAS ---
 with aba3:
@@ -127,7 +151,6 @@ with aba3:
   data_l = sheet_l.get_all_values()
 
   if len(data_l) > 1:
-    # Garante que linhas sem anotação não quebrem a tabela
     rows = []
     for r in data_l[1:]:
       artigo = r[0] if len(r) > 0 else ""
@@ -139,15 +162,14 @@ with aba3:
     st.table(df_l)
 
     st.markdown("---")
-    st.markdown("### ✏️ Editar Status ou Anotações")
+    st.markdown("### ✏️ Editar ou Excluir Leitura")
 
     artigo_edit = st.selectbox(
-        "Selecione o texto para editar:",
+        "Selecione o texto:",
         df_l["Artigo / Livro"].tolist(),
         key="select_artigo_edit",
     )
 
-    # Recupera os valores atuais do item selecionado
     item_atual = df_l[df_l["Artigo / Livro"] == artigo_edit].iloc[0]
     status_atual = item_atual["Status"]
     anotacao_atual = item_atual["Anotações Tese"]
@@ -167,9 +189,24 @@ with aba3:
         key="edit_anotacoes_tese",
     )
 
-    if st.button("Atualizar Leitura"):
-      row_idx = df_l[df_l["Artigo / Livro"] == artigo_edit].index[0] + 2
-      sheet_l.update_cell(row_idx, 2, novo_status_leitura)
-      sheet_l.update_cell(row_idx, 3, novas_anotacoes)
-      st.success("Informações atualizadas com sucesso!")
-      st.rerun()
+    col_l1, col_l2 = st.columns(2)
+
+    with col_l1:
+      if st.button("Atualizar Leitura"):
+        row_idx = df_l[df_l["Artigo / Livro"] == artigo_edit].index[0] + 2
+        sheet_l.update_cell(row_idx, 2, novo_status_leitura)
+        sheet_l.update_cell(row_idx, 3, novas_anotacoes)
+        st.success("Informações atualizadas com sucesso!")
+        st.rerun()
+
+    with col_l2:
+      st.write("🗑️ **Excluir Registro**")
+      confirmar_del_leit = st.checkbox("Confirmar exclusão", key="check_del_leit")
+      if st.button("Excluir Leitura", type="primary"):
+        if confirmar_del_leit:
+          row_idx = df_l[df_l["Artigo / Livro"] == artigo_edit].index[0] + 2
+          sheet_l.delete_rows(row_idx)
+          st.success(f"'{artigo_edit}' removido com sucesso!")
+          st.rerun()
+        else:
+          st.warning("Marque a caixa de confirmação antes de excluir.")
