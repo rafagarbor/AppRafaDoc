@@ -1,126 +1,81 @@
-from datetime import date
 import streamlit as st
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+import pandas as pd
+import json
 
-# Configuração da Página para dispositivos móveis/iPad
-st.set_page_config(
-    page_title="Doutorado UFRGS - Violão", page_icon="🎸", layout="centered"
-)
+# Configuração da conexão com Google Sheets
+def get_client():
+    creds_dict = json.loads(st.secrets["gcp_service_account"])
+    scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+    return gspread.authorize(creds)
 
-# Título Principal
+st.set_page_config(page_title="Doutorado UFRGS", page_icon="🎸", layout="centered")
 st.title("🎸 Doutorado UFRGS")
-st.markdown("### Práticas Interpretativas / Violão")
-st.markdown(
-    "Gerenciador de rotina para o recital de **25/11/2026** e a tese."
-)
 
-# Barra Lateral (Contador e Metas)
-st.sidebar.header("🎯 Prazos e Metas")
-data_recital = date(2026, 11, 25)
-dias_restantes = (data_recital - date.today()).days
+aba1, aba2, aba3 = st.tabs(["⏱️ Timer/Estudos", "🎼 Repertório", "📚 Leituras"])
 
-st.sidebar.metric(
-    label="Contagem p/ o Recital",
-    value=f"{dias_restantes} dias",
-    delta="25/11/2026",
-)
-st.sidebar.markdown("---")
-st.sidebar.info("🎸 Violão: ~70% do tempo\n📚 Pesquisa: ~30% do tempo")
-
-# Abas Principais otimizadas para toque
-aba1, aba2, aba3 = st.tabs(["⏱️ Horas", "🎼 Repertório", "📚 Leituras"])
-
-# ---------------------------------------------------------
-# ABA 1: REGISTRO DE HORAS DIÁRIAS
-# ---------------------------------------------------------
+# --- ABA 1: TIMER E REGISTROS ---
 with aba1:
-    st.subheader("Registro Diário")
-
-    horas_violao = st.number_input(
-        "Horas de Violão (Técnica/Repertório):",
-        min_value=0.0,
-        max_value=12.0,
-        step=0.5,
-        value=4.0,
-    )
-    obs_violao = st.text_area(
-        "Notas do estudo de violão de hoje:",
-        placeholder="Ex: Passagens difíceis do 2º movimento...",
+    st.subheader("⏱️ Temporizador (Nativo iOS)")
+    mins = st.number_input("Minutos de estudo:", min_value=1, max_value=180, value=45)
+    
+    # Link para o Atalho IniciarTimer
+    url_timer = f"shortcuts://run-shortcut?name=IniciarTimer&input=text&text={mins}"
+    st.markdown(
+        f'<a href="{url_timer}" style="text-decoration:none;">'
+        f'<div style="background-color:#4CAF50; color:white; padding:15px; text-align:center; border-radius:10px; font-size:18px;">'
+        f'⏰ Iniciar Timer no iPad ({mins} min)</div></a>', 
+        unsafe_allow_html=True
     )
 
     st.markdown("---")
-
-    horas_pesquisa = st.number_input(
-        "Horas de Pesquisa / Tese:",
-        min_value=0.0,
-        max_value=12.0,
-        step=0.5,
-        value=1.5,
-    )
-    obs_pesquisa = st.text_area(
-        "Notas da pesquisa de hoje:",
-        placeholder="Ex: Fichamento do artigo X...",
-    )
-
-    if st.button("Salvar Registro Diário", type="primary"):
-        total_horas = horas_violao + horas_pesquisa
-        st.success(
-            f"Salvo! Total estudado hoje: {total_horas} horas. Bom descanso, doutorando!"
-        )
-
-# ---------------------------------------------------------
-# ABA 2: REPERTÓRIO DO RECITAL (25/11/2026)
-# ---------------------------------------------------------
-with aba2:
-    st.subheader("Obras do Recital")
-    st.markdown("Acompanhe o andamento das obras.")
-
-    obra_1 = st.expander("1. Obra Principal / Sonata")
-    with obra_1:
-        st.text_input("Compositor:", key="comp_1")
-        st.select_slider(
-            "Status:",
-            options=[
-                "Não Iniciado",
-                "Estudo de Trechos",
-                "Andamento Parcial",
-                "Pronto para Polimento",
-            ],
-            key="status_1",
-        )
-        st.text_input("Metrônomo (Atual / Meta):", key="met_1")
-
-    obra_2 = st.expander("2. Segunda Obra do Programa")
-    with obra_2:
-        st.text_input("Compositor:", key="comp_2")
-        st.select_slider(
-            "Status:",
-            options=[
-                "Não Iniciado",
-                "Estudo de Trechos",
-                "Andamento Parcial",
-                "Pronto para Polimento",
-            ],
-            key="status_2",
-        )
-        st.text_input("Metrônomo (Atual / Meta):", key="met_2")
-
-# ---------------------------------------------------------
-# ABA 3: GESTÃO DE LEITURAS E ARTIGOS
-# ---------------------------------------------------------
-with aba3:
-    st.subheader("Fila de Leituras (Tese)")
-
-    novo_artigo = st.text_input("Título do Artigo / Livro e Autor")
-    status_artigo = st.selectbox(
-        "Status da Leitura", ["Não Lido", "Lendo", "Fichado"]
-    )
-
-    if st.button("Adicionar à Fila de Leituras"):
-        if novo_artigo:
-            st.success(f"'{novo_artigo}' adicionado com sucesso!")
+    st.subheader("📝 Reflexão (Diário iOS)")
+    resumo = st.text_input("Resumo da prática:")
+    
+    if st.button("Registrar no Diário"):
+        if resumo:
+            texto_fmt = resumo.replace(" ", "_")
+            url_diario = f"shortcuts://run-shortcut?name=RegistrarEstudo&input=text&text={texto_fmt}"
+            st.markdown(f'<a href="{url_diario}" target="_blank">Clique aqui para enviar ao Diário</a>', unsafe_allow_html=True)
         else:
-            st.warning("Digite o nome do artigo.")
+            st.warning("Escreva o resumo primeiro.")
 
-    st.markdown("---")
-    st.markdown("**Exemplo na Fila:**")
-    st.markdown("- *A Performance na Prática Interpretativa* — [Fichado]")
+# --- ABA 2: REPERTÓRIO ---
+with aba2:
+    st.subheader("🎼 Repertório")
+    client = get_client()
+    sheet = client.open("Doutorado_Estudos").worksheet("Repertorio")
+    data = sheet.get_all_values()
+    
+    with st.expander("➕ Adicionar Obra"):
+        nova_obra = st.text_input("Nome da Obra")
+        novo_status = st.selectbox("Status", ["Não Iniciado", "Em Andamento", "Pronto"])
+        if st.button("Salvar Obra"):
+            sheet.append_row([nova_obra, novo_status])
+            st.rerun()
+            
+    if len(data) > 1:
+        df = pd.DataFrame(data[1:], columns=["Obra", "Status"])
+        st.table(df)
+        st.markdown("### Editar Status")
+        obra_edit = st.selectbox("Selecione:", df["Obra"].tolist())
+        status_edit = st.selectbox("Novo:", ["Não Iniciado", "Em Andamento", "Pronto"])
+        if st.button("Atualizar"):
+            index = df[df["Obra"] == obra_edit].index[0] + 2
+            sheet.update_cell(index, 2, status_edit)
+            st.rerun()
+
+# --- ABA 3: LEITURAS ---
+with aba3:
+    st.subheader("📚 Leituras")
+    client = get_client()
+    sheet_l = client.open("Doutorado_Estudos").worksheet("Leituras")
+    novo_artigo = st.text_input("Novo Artigo/Livro")
+    if st.button("Adicionar"):
+        sheet_l.append_row([novo_artigo, "Não Lido"])
+        st.rerun()
+    data_l = sheet_l.get_all_values()
+    if len(data_l) > 1:
+        st.table(pd.DataFrame(data_l[1:], columns=["Artigo", "Status"]))
