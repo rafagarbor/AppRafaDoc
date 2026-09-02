@@ -197,7 +197,7 @@ with aba1:
         unsafe_allow_html=True,
     )
 
-  # --- FERRAMENTAS MUSICAIS (Abaixo do tempo personalizado) ---
+  # Ferramentas musicais (Metrônomo e Afinador)
   col_tool1, col_tool2 = st.columns(2)
   with col_tool1:
     st.markdown(gerar_botao_metronomo(), unsafe_allow_html=True)
@@ -406,12 +406,20 @@ with aba3:
 
       df_log = pd.DataFrame(rows_log)
       df_log["Minutos_Num"] = pd.to_numeric(df_log["Minutos"], errors="coerce")
-      df_log_valido = df_log.dropna(subset=["Minutos_Num"])
+
+      # Trata a data para ordenação cronológica correta
+      df_log["Data_DT"] = pd.to_datetime(
+          df_log["Data"], format="%d/%m/%Y", errors="coerce"
+      )
+      df_log_valido = df_log.dropna(subset=["Minutos_Num", "Data_DT"]).sort_values(
+          "Data_DT"
+      )
 
       total_minutos = df_log_valido["Minutos_Num"].sum()
       total_horas = round(total_minutos / 60, 1)
+      dias_estudados_total = df_log_valido["Data"].nunique()
 
-      m_col1, m_col2 = st.columns(2)
+      m_col1, m_col2, m_col3 = st.columns(3)
       with m_col1:
         st.metric(
             "Total Estudado",
@@ -419,12 +427,108 @@ with aba3:
             f"{int(total_minutos)} minutos",
         )
       with m_col2:
-        st.metric("Sessões de Estudo", f"{len(df_log_valido)}")
+        st.metric("Dias Praticados", f"{dias_estudados_total} dia(s)")
+      with m_col3:
+        st.metric("Sessões Registradas", f"{len(df_log_valido)}")
 
       st.markdown("---")
 
-      # GRÁFICO 1: OBRA X TEMPO (%)
-      st.write("### 🍩 1. Porcentagem de Tempo por Obra")
+      # NOVO 1: GRÁFICO DE ESTUDOS POR DIA (EVOLUÇÃO DIÁRIA)
+      st.write("### 📅 1. Tempo Estudado por Dia (O que foi estudado)")
+      df_diario = (
+          df_log_valido.groupby(["Data_DT", "Data", "Obra"])["Minutos_Num"]
+          .sum()
+          .reset_index()
+          .sort_values("Data_DT")
+      )
+
+      fig_diario = px.bar(
+          df_diario,
+          x="Data",
+          y="Minutos_Num",
+          color="Obra",
+          title="Minutos Estudados por Dia",
+          labels={"Minutos_Num": "Minutos Estudados", "Data": "Data"},
+          color_discrete_sequence=px.colors.qualitative.Plotly,
+          barmode="stack",
+      )
+      fig_diario.update_xaxes(type="category")  # Garante ordenação cronológica
+      fig_diario.update_layout(
+          legend=dict(
+              orientation="h", yanchor="bottom", y=-0.5, xanchor="center", x=0.5
+          ),
+          margin=dict(t=30, b=20, l=10, r=10),
+      )
+      st.plotly_chart(fig_diario, use_container_width=True)
+
+      st.markdown("---")
+
+      # NOVO 2: SEÇÃO DE ANÁLISE DETALHADA POR OBRA
+      st.write("### 🔍 2. Histórico e Dias Estudados por Obra")
+      lista_obras_unicas = sorted(df_log_valido["Obra"].unique().tolist())
+
+      obra_filtro = st.selectbox(
+          "Selecione uma Obra para analisar:",
+          options=lista_obras_unicas,
+          key="select_obra_analise",
+      )
+
+      if obra_filtro:
+        df_obra_sel = df_log_valido[
+            df_log_valido["Obra"] == obra_filtro
+        ].sort_values("Data_DT")
+
+        tot_min_obra = df_obra_sel["Minutos_Num"].sum()
+        tot_horas_obra = round(tot_min_obra / 60, 1)
+        dias_unicos_obra = df_obra_sel["Data"].nunique()
+
+        o_col1, o_col2, o_col3 = st.columns(3)
+        with o_col1:
+          st.metric(
+              "Total na Obra",
+              f"{tot_horas_obra} hrs",
+              f"{int(tot_min_obra)} min",
+          )
+        with o_col2:
+          st.metric("Dias Praticados", f"{dias_unicos_obra} dia(s)")
+        with o_col3:
+          st.metric("Sessões na Obra", f"{len(df_obra_sel)}")
+
+        # Gráfico dos dias em que esta obra foi estudada
+        df_obra_dias = (
+            df_obra_sel.groupby(["Data_DT", "Data", "Tipo"])["Minutos_Num"]
+            .sum()
+            .reset_index()
+            .sort_values("Data_DT")
+        )
+
+        fig_obra_dias = px.bar(
+            df_obra_dias,
+            x="Data",
+            y="Minutos_Num",
+            color="Tipo",
+            title=f"Dias em que '{obra_filtro}' foi estudada",
+            labels={"Minutos_Num": "Minutos Estudados", "Data": "Data"},
+            color_discrete_sequence=px.colors.qualitative.Set2,
+            barmode="stack",
+        )
+        fig_obra_dias.update_xaxes(type="category")
+        fig_obra_dias.update_layout(
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=-0.5,
+                xanchor="center",
+                x=0.5,
+            ),
+            margin=dict(t=30, b=20, l=10, r=10),
+        )
+        st.plotly_chart(fig_obra_dias, use_container_width=True)
+
+      st.markdown("---")
+
+      # GRÁFICO 3: PORCENTAGEM DE TEMPO POR OBRA
+      st.write("### 🍩 3. Porcentagem Geral de Tempo por Obra")
       df_agrupado_obra = (
           df_log_valido.groupby("Obra")["Minutos_Num"]
           .sum()
@@ -458,8 +562,8 @@ with aba3:
 
       st.markdown("---")
 
-      # GRÁFICO 2: TIPO DE ESTUDO X TEMPO (%)
-      st.write("### 🎯 2. Porcentagem por Tipo de Estudo")
+      # GRÁFICO 4: PORCENTAGEM POR TIPO DE ESTUDO
+      st.write("### 🎯 4. Porcentagem Geral por Tipo de Estudo")
       df_agrupado_tipo = (
           df_log_valido.groupby("Tipo")["Minutos_Num"]
           .sum()
@@ -493,8 +597,8 @@ with aba3:
 
       st.markdown("---")
 
-      # GRÁFICO 3: OBRA X TIPO DE ESTUDO (BARRAS EMPILHADAS)
-      st.write("### 🎼 3. Distribuição de Foco por Obra (Minutos)")
+      # GRÁFICO 5: OBRA X TIPO DE ESTUDO (BARRAS EMPILHADAS)
+      st.write("### 🎼 5. Distribuição de Foco por Obra (Minutos)")
       df_obra_tipo = (
           df_log_valido.groupby(["Obra", "Tipo"])["Minutos_Num"]
           .sum()
