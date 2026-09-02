@@ -172,7 +172,6 @@ with aba2:
         st.warning("Digite o nome da obra.")
 
   if len(data) > 1:
-    # Trata dinamicamente caso a coluna de link GoodNotes ainda não exista nas linhas antigas
     rows = []
     for r in data[1:]:
       obra = r[0] if len(r) > 0 else ""
@@ -182,7 +181,6 @@ with aba2:
 
     df = pd.DataFrame(rows, columns=["Obra", "Status", "GoodNotes Link"])
 
-    # Exibe a lista com botão de abrir no GoodNotes
     for idx, row in df.iterrows():
       col_a, col_b, col_c = st.columns([3, 2, 2])
       with col_a:
@@ -254,11 +252,18 @@ with aba3:
   sheet_l = client.open("Doutorado_Estudos").worksheet("Leituras")
 
   opcoes_leitura = ["Não Lido", "Lendo", "Lido", "Fichado para Tese"]
+  opcoes_app = ["Pré-visualização (PDF / Web / Arquivo)", "GoodNotes"]
 
   with st.expander("➕ Adicionar Nova Leitura"):
     novo_artigo = st.text_input("Título / Autor do Texto", key="input_novo_artigo")
     status_leitura = st.selectbox(
         "Status", opcoes_leitura, key="status_novo_artigo"
+    )
+    app_leitura = st.selectbox("Onde você lê este texto?", opcoes_app, key="app_novo_artigo")
+    link_leitura = st.text_input(
+        "Link / URL do Texto ou GoodNotes (Opcional):",
+        key="link_novo_artigo",
+        help="Cole aqui o link do GoodNotes ou o link do PDF/Arquivo (iCloud, Drive, Web).",
     )
     anotacoes_tese = st.text_area(
         "Notas / Citações Relevantes para a Tese:",
@@ -268,7 +273,7 @@ with aba3:
 
     if st.button("Salvar Leitura"):
       if novo_artigo:
-        sheet_l.append_row([novo_artigo, status_leitura, anotacoes_tese])
+        sheet_l.append_row([novo_artigo, status_leitura, anotacoes_tese, app_leitura, link_leitura])
         st.success("Leitura salva com sucesso!")
         st.rerun()
       else:
@@ -282,12 +287,34 @@ with aba3:
       artigo = r[0] if len(r) > 0 else ""
       status = r[1] if len(r) > 1 else "Não Lido"
       anotacao = r[2] if len(r) > 2 else ""
-      rows.append([artigo, status, anotacao])
+      app_origem = r[3] if len(r) > 3 else "Pré-visualização (PDF / Web / Arquivo)"
+      link_doc = r[4] if len(r) > 4 else ""
+      rows.append([artigo, status, anotacao, app_origem, link_doc])
 
     df_l = pd.DataFrame(
-        rows, columns=["Artigo / Livro", "Status", "Anotações Tese"]
+        rows, columns=["Artigo / Livro", "Status", "Anotações Tese", "App Origem", "Link Documento"]
     )
-    st.table(df_l)
+
+    # Exibe a lista formatada com botões de leitura
+    for idx, row in df_l.iterrows():
+      col_l_a, col_l_b, col_l_c = st.columns([3, 2, 2])
+      with col_l_a:
+        st.write(f"**{row['Artigo / Livro']}**")
+        if row["Anotações Tese"]:
+          st.caption(f"📝 *Notas:* {row['Anotações Tese'][:80]}..." if len(row["Anotações Tese"]) > 80 else f"📝 *Notas:* {row['Anotações Tese']}")
+      with col_l_b:
+        st.caption(f"Status: {row['Status']}")
+      with col_l_c:
+        if row["Link Documento"]:
+          icone = "📖" if "GoodNotes" in row["App Origem"] else "📄"
+          rotulo_btn = "Abrir no GoodNotes" if "GoodNotes" in row["App Origem"] else "Abrir Texto (Pré-visualização)"
+          st.markdown(
+              f"[{icone} {rotulo_btn}]({row['Link Documento']})",
+              unsafe_allow_html=True,
+          )
+        else:
+          st.caption("Sem link")
+      st.divider()
 
     st.markdown("---")
     st.markdown("### ✏️ Editar ou Excluir Leitura")
@@ -301,10 +328,17 @@ with aba3:
     item_atual = df_l[df_l["Artigo / Livro"] == artigo_edit].iloc[0]
     status_atual = item_atual["Status"]
     anotacao_atual = item_atual["Anotações Tese"]
+    app_atual = item_atual["App Origem"]
+    link_atual = item_atual["Link Documento"]
 
     idx_status = (
         opcoes_leitura.index(status_atual)
         if status_atual in opcoes_leitura
+        else 0
+    )
+    idx_app = (
+        opcoes_app.index(app_atual)
+        if app_atual in opcoes_app
         else 0
     )
 
@@ -313,6 +347,19 @@ with aba3:
         opcoes_leitura,
         index=idx_status,
         key="edit_status_leitura",
+    )
+
+    novo_app_leitura = st.selectbox(
+        "Onde lê este texto?:",
+        opcoes_app,
+        index=idx_app,
+        key="edit_app_leitura",
+    )
+
+    novo_link_leitura = st.text_input(
+        "Link / URL do Texto:",
+        value=link_atual,
+        key="edit_link_leitura",
     )
 
     novas_anotacoes = st.text_area(
@@ -328,6 +375,8 @@ with aba3:
         row_idx = df_l[df_l["Artigo / Livro"] == artigo_edit].index[0] + 2
         sheet_l.update_cell(row_idx, 2, novo_status_leitura)
         sheet_l.update_cell(row_idx, 3, novas_anotacoes)
+        sheet_l.update_cell(row_idx, 4, novo_app_leitura)
+        sheet_l.update_cell(row_idx, 5, novo_link_leitura)
         st.success("Informações atualizadas com sucesso!")
         st.rerun()
 
