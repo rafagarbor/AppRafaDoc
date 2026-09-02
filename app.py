@@ -44,8 +44,7 @@ aba1, aba2, aba3 = st.tabs(["⏱️ Timer/Estudos", "🎼 Repertório", "📚 Le
 # --- ABA 1: TIMER E REGISTROS ---
 with aba1:
   # --- CONTAGEM REGRESSIVA PARA O RECITAL ---
-  # Define a data do recital (Ano, Mês, Dia) - Ajuste o ano/data conforme necessário
-  data_recital = date(2025, 12, 15)
+  data_recital = date(2026, 11, 25)
   hoje = date.today()
   dias_restantes = (data_recital - hoje).days
 
