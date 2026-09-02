@@ -46,15 +46,15 @@ def limpar_cache():
 
 
 def gerar_botao_timer(minutos, cor="#2E7D32", texto_personalizado=None):
-  """Gera botões HTML para disparar o timer via Atalho nativo do iOS."""
+  """Gera botões HTML com fonte branca e negrito para disparar o timer via iOS."""
   url_timer = (
       f"shortcuts://run-shortcut?name=IniciarTimer&input=text&text={minutos}"
   )
   rotulo = texto_personalizado if texto_personalizado else f"⏱️ {minutos} min"
   return f"""
     <a href="{url_timer}" style="text-decoration: none;">
-        <div style="background-color: {cor}; color: #FFFFFF !important; padding: 12px; text-align: center; border-radius: 8px; font-size: 16px; font-weight: bold; margin-bottom: 8px;">
-            <span style="color: #FFFFFF !important;">{rotulo}</span>
+        <div style="background-color: {cor}; padding: 12px; text-align: center; border-radius: 8px; margin-bottom: 8px;">
+            <span style="color: #FFFFFF !important; font-size: 16px; font-weight: bold; text-decoration: none;">{rotulo}</span>
         </div>
     </a>
     """
@@ -212,7 +212,6 @@ with aba1:
       placeholder="Escreva suas notas aqui para habilitar os botões de envio...",
   )
 
-  # Botões do Diário sempre visíveis (mas com comportamento dinâmico baseados no texto)
   col_d1, col_d2 = st.columns(2)
   texto_para_enviar = (
       resumo if resumo else "Sessão de estudo sem resumo especificado."
@@ -224,10 +223,10 @@ with aba1:
     url_v = f"shortcuts://run-shortcut?name=RegistrarEstudo&input=text&text={texto_v_encoded}"
     st.markdown(
         f'<a href="{url_v}" style="text-decoration:none;"><div'
-        ' style="background-color:#008CBA; color:#FFFFFF !important; padding:12px;'
-        " text-align:center; border-radius:8px; font-weight:bold;"
-        ' margin-top:8px;"><span style="color: #FFFFFF !important;">🚀 Enviar'
-        " ao Diário (Violão)</span></div></a>",
+        ' style="background-color:#008CBA; padding:12px; text-align:center;'
+        ' border-radius:8px; margin-top:8px;"><span style="color: #FFFFFF'
+        ' !important; font-weight: bold; font-size: 15px;">🚀 Enviar ao Diário'
+        " (Violão)</span></div></a>",
         unsafe_allow_html=True,
     )
 
@@ -237,10 +236,10 @@ with aba1:
     url_d = f"shortcuts://run-shortcut?name=RegistrarEstudo&input=text&text={texto_d_encoded}"
     st.markdown(
         f'<a href="{url_d}" style="text-decoration:none;"><div'
-        ' style="background-color:#6C3483; color:#FFFFFF !important; padding:12px;'
-        " text-align:center; border-radius:8px; font-weight:bold;"
-        ' margin-top:8px;"><span style="color: #FFFFFF !important;">🚀 Enviar'
-        " ao Diário (Doutorado)</span></div></a>",
+        ' style="background-color:#6C3483; padding:12px; text-align:center;'
+        ' border-radius:8px; margin-top:8px;"><span style="color: #FFFFFF'
+        ' !important; font-weight: bold; font-size: 15px;">🚀 Enviar ao Diário'
+        " (Doutorado)</span></div></a>",
         unsafe_allow_html=True,
     )
 
@@ -284,7 +283,6 @@ with aba2:
 
       st.markdown("### 📋 Suas Obras Cadastradas")
 
-      # Exibição com botões estilizados de alta legibilidade (Fundo Verde Escuro / Letra Branca)
       for idx, row in df_rep.iterrows():
         c_rep1, c_rep2, c_rep3 = st.columns([3, 2, 2])
         with c_rep1:
@@ -296,11 +294,10 @@ with aba2:
           if link_val and link_val.strip() != "":
             st.markdown(
                 f'<a href="{link_val}" target="_blank" style="text-decoration:'
-                ' none;"><div style="background-color: #1E8449; color: #FFFFFF'
-                ' !important; padding: 8px 12px; text-align: center;'
-                ' border-radius: 6px; font-size: 13px; font-weight: bold;'
-                ' box-shadow: 0px 1px 3px rgba(0,0,0,0.2);"><span'
-                ' style="color: #FFFFFF !important;">🎵 Abrir'
+                ' none;"><div style="background-color: #1E8449; padding: 8px'
+                ' 12px; text-align: center; border-radius: 6px; box-shadow:'
+                ' 0px 1px 3px rgba(0,0,0,0.2);"><span style="color: #FFFFFF'
+                ' !important; font-size: 13px; font-weight: bold;">🎵 Abrir'
                 " Partitura</span></div></a>",
                 unsafe_allow_html=True,
             )
