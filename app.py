@@ -39,11 +39,14 @@ def gerar_botao_timer(minutos, cor="#4CAF50", texto_personalizado=None):
 st.set_page_config(page_title="Doutorado UFRGS", page_icon="🎸", layout="centered")
 st.title("🎸 Doutorado UFRGS")
 
-aba1, aba2, aba3 = st.tabs(["⏱️ Timer/Estudos", "🎼 Repertório", "📚 Leituras"])
+aba1, aba2, aba3, aba4 = st.tabs(
+    ["⏱️ Timer/Estudos", "🎼 Repertório", "📊 Análise de Tempo", "📚 Leituras"]
+)
+
+client = get_client()
 
 # --- ABA 1: TIMER E REGISTROS ---
 with aba1:
-  # --- CONTAGEM REGRESSIVA PARA O RECITAL ---
   data_recital = date(2026, 11, 25)
   hoje = date.today()
   dias_restantes = (data_recital - hoje).days
@@ -61,8 +64,6 @@ with aba1:
   st.markdown("---")
 
   st.subheader("⏱️ Temporizador Rápido (Nativo iOS)")
-  st.write("Selecione um bloco de tempo para disparar o timer no iPad:")
-
   col1, col2, col3, col4 = st.columns(4)
 
   with col1:
@@ -70,37 +71,62 @@ with aba1:
         gerar_botao_timer(45, cor="#2E7D32", texto_personalizado="🧠 45 min"),
         unsafe_allow_html=True,
     )
-
   with col2:
     st.markdown(
         gerar_botao_timer(30, cor="#388E3C", texto_personalizado="🎯 30 min"),
         unsafe_allow_html=True,
     )
-
   with col3:
     st.markdown(
         gerar_botao_timer(10, cor="#F57C00", texto_personalizado="☕ 10 min"),
         unsafe_allow_html=True,
     )
-
   with col4:
     st.markdown(
         gerar_botao_timer(5, cor="#D32F2F", texto_personalizado="⚡ 5 min"),
         unsafe_allow_html=True,
     )
 
-  with st.expander("⚙️ Tempo Personalizado"):
-    mins_custom = st.number_input(
-        "Minutos de estudo:", min_value=1, max_value=180, value=25
-    )
-    st.markdown(
-        gerar_botao_timer(
-            mins_custom,
-            cor="#1976D2",
-            texto_personalizado=f"⏰ Iniciar Timer Customizado ({mins_custom} min)",
-        ),
-        unsafe_allow_html=True,
-    )
+  st.markdown("---")
+  st.subheader("⏱️ Registrar Tempo Estudado por Peça")
+
+  # Carrega as obras cadastradas no repertório
+  sheet_rep = client.open("Doutorado_Estudos").worksheet("Repertorio")
+  data_rep = sheet_rep.get_all_values()
+
+  lista_obras = []
+  if len(data_rep) > 1:
+    lista_obras = [r[0] for r in data_rep[1:] if r[0]]
+
+  if lista_obras:
+    with st.form("form_log_tempo", clear_on_submit=True):
+      obra_selecionada = st.selectbox("Selecione a Obra / Peça:", lista_obras)
+      minutos_estudados = st.number_input(
+          "Minutos Praticados:", min_value=5, max_value=300, value=30, step=5
+      )
+      obs_sessao = st.text_input(
+          "Observação técnica (opcional):",
+          placeholder="ex: Foco no compasso 24 a 32 / Metrônomo a 80bpm",
+      )
+
+      btn_salvar_tempo = st.form_submit_button("💾 Salvar Registro de Tempo")
+
+      if btn_salvar_tempo:
+        sheet_log = client.open("Doutorado_Estudos").worksheet("Log_Tempo")
+        data_hoje_str = date.today().strftime("%d/%m/%Y")
+        sheet_log.append_row([
+            data_hoje_str,
+            obra_selecionada,
+            str(minutos_estudados),
+            obs_sessao,
+        ])
+        st.success(
+            f"Registrado! {minutos_estudados} min dedicados a"
+            f" '{obra_selecionada}'."
+        )
+        st.rerun()
+  else:
+    st.info("Cadastre obras na aba 'Repertório' para começar a registrar o tempo.")
 
   st.markdown("---")
   st.subheader("📝 Reflexão (Diário iOS)")
@@ -108,12 +134,10 @@ with aba1:
 
   if resumo:
     col_d1, col_d2 = st.columns(2)
-
     with col_d1:
       texto_violao = f"#Violao\n\n{resumo}"
       texto_v_encoded = urllib.parse.quote(texto_violao)
       url_v = f"shortcuts://run-shortcut?name=RegistrarEstudo&input=text&text={texto_v_encoded}"
-
       st.markdown(
           f'<a href="{url_v}" style="text-decoration:none;"><div'
           ' style="background-color:#008CBA; color:white; padding:12px;'
@@ -126,7 +150,6 @@ with aba1:
       texto_doutorado = f"#Doutorado\n\n{resumo}"
       texto_d_encoded = urllib.parse.quote(texto_doutorado)
       url_d = f"shortcuts://run-shortcut?name=RegistrarEstudo&input=text&text={texto_d_encoded}"
-
       st.markdown(
           f'<a href="{url_d}" style="text-decoration:none;"><div'
           ' style="background-color:#8E44AD; color:white; padding:12px;'
@@ -134,13 +157,10 @@ with aba1:
           ' margin-top:8px;">🚀 Enviar ao Diário (Doutorado)</div></a>',
           unsafe_allow_html=True,
       )
-  else:
-    st.info("Digite o resumo da sua prática acima para habilitar o envio.")
 
 # --- ABA 2: REPERTÓRIO ---
 with aba2:
   st.subheader("🎼 Repertório")
-  client = get_client()
   sheet = client.open("Doutorado_Estudos").worksheet("Repertorio")
   data = sheet.get_all_values()
 
@@ -245,10 +265,76 @@ with aba2:
         else:
           st.warning("Marque a caixa de confirmação antes de excluir.")
 
-# --- ABA 3: LEITURAS ---
+# --- ABA 3: DASHBOARD / ANÁLISE DE TEMPO ---
 with aba3:
+  st.subheader("📊 Distribuição e Porcentagem de Tempo Estudado")
+
+  try:
+    sheet_log = client.open("Doutorado_Estudos").worksheet("Log_Tempo")
+    data_log = sheet_log.get_all_values()
+
+    if len(data_log) > 1:
+      df_log = pd.DataFrame(
+          data_log[1:], columns=["Data", "Obra", "Minutos", "Observacao"]
+      )
+      df_log["Minutos"] = pd.to_numeric(df_log["Minutos"], errors="coerce")
+      df_log = df_log.dropna(subset=["Minutos"])
+
+      total_minutos = df_log["Minutos"].sum()
+      total_horas = round(total_minutos / 60, 1)
+
+      m_col1, m_col2 = st.columns(2)
+      with m_col1:
+        st.metric("Total de Tempo Dedicado", f"{total_horas} hrs", f"{int(total_minutos)} minutos")
+      with m_col2:
+        st.metric("Sessões de Estudo Registradas", f"{len(df_log)}")
+
+      st.markdown("---")
+
+      # Agrupa o tempo por obra
+      df_agrupado = (
+          df_log.groupby("Obra")["Minutos"]
+          .sum()
+          .reset_index()
+          .sort_values(by="Minutos", ascending=False)
+      )
+
+      # Calcula Porcentagem
+      df_agrupado["Porcentagem (%)"] = (
+          (df_agrupado["Minutos"] / total_minutos) * 100
+      ).round(1)
+      df_agrupado["Horas"] = (df_agrupado["Minutos"] / 60).round(1)
+
+      st.write("### 📈 Porcentagem de Tempo por Obra")
+
+      # Exibição do gráfico em barra nativo do Streamlit
+      st.bar_chart(
+          data=df_agrupado.set_index("Obra")["Porcentagem (%)"],
+          use_container_width=True,
+      )
+
+      st.write("### 📋 Detalhamento por Peça")
+      st.dataframe(
+          df_agrupado[["Obra", "Porcentagem (%)", "Horas", "Minutos"]],
+          hide_index=True,
+          use_container_width=True,
+      )
+
+      st.markdown("---")
+      with st.expander("📜 Histórico de Sessões Recentes"):
+        st.dataframe(
+            df_log[["Data", "Obra", "Minutos", "Observacao"]].iloc[::-1],
+            hide_index=True,
+            use_container_width=True,
+        )
+    else:
+      st.info("Nenhum registro de tempo salvo ainda. Faça seu primeiro registro na Aba 'Timer/Estudos'.")
+  except Exception as e:
+    st.warning("Certifique-se de que a aba 'Log_Tempo' foi criada na planilha do Google Drive.")
+
+# --- ABA 4: LEITURAS ---
+with aba4:
   st.subheader("📚 Leituras & Fichamento da Tese")
-  client = get_client()
   sheet_l = client.open("Doutorado_Estudos").worksheet("Leituras")
 
   opcoes_leitura = ["Não Lido", "Lendo", "Lido", "Fichado para Tese"]
@@ -295,7 +381,6 @@ with aba3:
         rows, columns=["Artigo / Livro", "Status", "Anotações Tese", "App Origem", "Link Documento"]
     )
 
-    # Exibe a lista formatada com botões de leitura
     for idx, row in df_l.iterrows():
       col_l_a, col_l_b, col_l_c = st.columns([3, 2, 2])
       with col_l_a:
