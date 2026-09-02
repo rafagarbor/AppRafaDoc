@@ -29,7 +29,6 @@ def get_client():
 def get_spreadsheet():
   """Abre a planilha uma única vez com tratamento de taxa limite."""
   client = get_client()
-  # Pequena pausa para evitar estouro de requisição simultânea
   time.sleep(0.5)
   return client.open("Doutorado_Estudos")
 
@@ -38,7 +37,7 @@ def get_spreadsheet():
 def carregar_dados_planilha(nome_aba):
   sh = get_spreadsheet()
   sheet = sh.worksheet(nome_aba)
-  time.sleep(0.3)  # Pausa de respiro para a API do Google
+  time.sleep(0.3)
   return sheet.get_all_values()
 
 
@@ -275,17 +274,27 @@ with aba2:
       df_rep = pd.DataFrame(rows)
 
       st.markdown("### 📋 Suas Obras Cadastradas")
-      st.dataframe(
-          df_rep,
-          column_config={
-              "GoodNotes Link": st.column_config.LinkColumn("Link Partitura"),
-              "Status": st.column_config.SelectboxColumn(
-                  "Status", options=opcoes_status_obra, required=True
-              ),
-          },
-          use_container_width=True,
-          hide_index=True,
-      )
+
+      # Exibição limpa e customizada com layout em colunas para cada obra
+      for idx, row in df_rep.iterrows():
+        c_rep1, c_rep2, c_rep3 = st.columns([3, 2, 2])
+        with c_rep1:
+          st.write(f"**{row['Obra']}**")
+        with c_rep2:
+          st.caption(f"Status: {row['Status']}")
+        with c_rep3:
+          link_val = row["GoodNotes Link"]
+          if link_val and link_val.strip() != "":
+            st.markdown(
+                f'<a href="{link_val}" target="_blank" style="text-decoration: none;">'
+                '<div style="background-color: #2E7D32; color: white; padding: '
+                '6px 10px; text-align: center; border-radius: 6px; font-size: '
+                '13px; font-weight: bold;">🎵 Abrir Partitura</div></a>',
+                unsafe_allow_html=True,
+            )
+          else:
+            st.caption("Sem link")
+        st.divider()
 
       st.markdown("---")
       st.markdown("### ✏️ Gerenciar / Excluir Obra")
