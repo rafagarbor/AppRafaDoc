@@ -11,7 +11,7 @@ import plotly.express as px
 import streamlit as st
 
 # --- LINK DO SEU QUADRO NO FREEFORM ---
-URL_QUADRO_FREEFORM = "https://www.icloud.com/freeform-copy/89485FDC-86D6-422C-AD27-F0C505E612C0#Tese_-_Brainstorming"
+URL_QUADRO_FREEFORM = "https://www.icloud.com/freeform/0a7R0CLXWwjEwloLYfZ5OUApA#Tese_-_Brainstorming"
 
 # --- FUSO HORÁRIO DE BRASÍLIA ---
 TZ_BRT = ZoneInfo("America/Sao_Paulo")
