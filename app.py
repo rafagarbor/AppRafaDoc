@@ -1,5 +1,6 @@
 import base64
-from datetime import date
+from datetime import datetime, date
+from zoneinfo import ZoneInfo
 import json
 import time
 import urllib.parse
@@ -8,6 +9,9 @@ import gspread
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+
+# --- FUSO HORÁRIO DE BRASÍLIA ---
+TZ_BRT = ZoneInfo("America/Sao_Paulo")
 
 
 # --- CACHE E CONEXÃO SEGURA ---
@@ -84,8 +88,9 @@ def gerar_botao_afinador():
     """
 
 
-# MUDANÇA: Título da página atualizado
-st.set_page_config(page_title="Dashboard de Estudos - Doutorado", page_icon="🎸", layout="centered")
+st.set_page_config(
+    page_title="Dashboard de Estudos - Doutorado", page_icon="🎸", layout="centered"
+)
 
 # --- CSS GLOBAL PARA FORÇAR CORES DOS BOTÕES ---
 st.markdown(
@@ -105,13 +110,15 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# MUDANÇA: Título principal do App atualizado
 st.title("🎸 Doutorado UFRGS - Dashboard de Estudos")
 
-# MUDANÇA: Adicionada a aba 5 para Obras Extras
-aba1, aba2, aba3, aba4, aba5 = st.tabs(
-    ["⏱️ Timer/Estudos", "🎼 Repertório", "📊 Análise de Tempo", "📚 Leituras", "🎸 Obras Extras"]
-)
+aba1, aba2, aba3, aba4, aba5 = st.tabs([
+    "⏱️ Timer/Estudos",
+    "🎼 Repertório",
+    "📊 Análise de Tempo",
+    "📚 Leituras",
+    "🎸 Obras Extras",
+])
 
 # Inicializa a planilha globalmente com tratamento amigável de erro 429
 try:
@@ -148,7 +155,7 @@ opcoes_app = ["Pré-visualização (PDF / Web / Arquivo)", "GoodNotes"]
 # --- ABA 1: TIMER E REGISTROS ---
 with aba1:
   data_recital = date(2026, 11, 25)
-  hoje = date.today()
+  hoje = datetime.now(TZ_BRT).date()
   dias_restantes = (data_recital - hoje).days
 
   if dias_restantes > 0:
@@ -215,14 +222,13 @@ with aba1:
     lista_obras = []
     if len(data_rep) > 1:
       lista_obras = [r[0] for r in data_rep[1:] if r[0]]
-      
-    # MUDANÇA: Tenta carregar também as obras extras para que você possa registrar tempo nelas!
+
     try:
-        data_extras = carregar_dados_planilha("Obras_Extras")
-        if len(data_extras) > 1:
-            lista_obras.extend([r[0] for r in data_extras[1:] if r[0]])
+      data_extras = carregar_dados_planilha("Obras_Extras")
+      if len(data_extras) > 1:
+        lista_obras.extend([r[0] for r in data_extras[1:] if r[0]])
     except Exception:
-        pass # Ignora se a aba ainda não existir
+      pass
 
     if lista_obras:
       with st.form("form_log_tempo", clear_on_submit=True):
@@ -245,7 +251,7 @@ with aba1:
 
         if btn_salvar_tempo:
           sheet_log = sh_global.worksheet("Log_Tempo")
-          data_hoje_str = date.today().strftime("%d/%m/%Y")
+          data_hoje_str = datetime.now(TZ_BRT).strftime("%d/%m/%Y")
           sheet_log.append_row([
               data_hoje_str,
               obra_selecionada,
@@ -261,7 +267,8 @@ with aba1:
           st.rerun()
     else:
       st.info(
-          "Cadastre obras na aba 'Repertório' ou 'Obras Extras' para começar a registrar o tempo."
+          "Cadastre obras na aba 'Repertório' ou 'Obras Extras' para começar a"
+          " registrar o tempo."
       )
   except Exception as e:
     st.error(f"Erro ao carregar repertório: {e}")
@@ -306,9 +313,9 @@ with aba1:
         unsafe_allow_html=True,
     )
 
-# --- ABA 2: REPERTÓRIO ---
+# --- ABA 2: REPERTÓRIO E MATERIAIS ---
 with aba2:
-  st.subheader("🎼 Repertório")
+  st.subheader("🎼 Repertório Principal")
   try:
     sheet_rep_obj = sh_global.worksheet("Repertorio")
     data = carregar_dados_planilha("Repertorio")
@@ -321,7 +328,10 @@ with aba2:
       link_goodnotes = st.text_input(
           "Link / URL da Partitura no GoodNotes (Opcional):",
           key="link_gn_novo_rep",
-          help="Cole aqui o link do documento para abrir a partitura direto no iPad.",
+          help=(
+              "Cole aqui o link do documento para abrir a partitura direto no"
+              " iPad."
+          ),
       )
 
       if st.button("Salvar Obra"):
@@ -391,6 +401,111 @@ with aba2:
   except Exception as e:
     st.error(f"Erro ao carregar a aba Repertório: {e}")
 
+  st.markdown("---")
+  st.markdown("---")
+
+  # SEÇÃO NOVA: MATERIAIS DE APOIO (LIVROS, APOSTILAS, MÉTODOS NO GOODNOTES)
+  st.subheader("📚 Materiais de Apoio & Métodos (GoodNotes)")
+  try:
+    sheet_mat_obj = sh_global.worksheet("Materiais_Apoio")
+    data_mat = carregar_dados_planilha("Materiais_Apoio")
+
+    with st.expander("➕ Adicionar Novo Material de Apoio"):
+      nome_mat = st.text_input(
+          "Nome do Material / Livro", key="input_nome_material"
+      )
+      tipo_mat = st.selectbox(
+          "Tipo de Material",
+          [
+              "📖 Livro",
+              "📄 Apostila / Método",
+              "🎼 Partituras / Exercícios",
+              "📝 Caderno de Anotações",
+              "📁 Outros",
+          ],
+          key="tipo_material",
+      )
+      link_mat = st.text_input(
+          "Link do GoodNotes / Arquivo:",
+          key="link_material_gn",
+          help="Cole aqui o link do GoodNotes para abrir direto no iPad.",
+      )
+
+      if st.button("Salvar Material"):
+        if nome_mat and link_mat:
+          sheet_mat_obj.append_row([nome_mat, tipo_mat, link_mat])
+          limpar_cache()
+          st.success("Material salvo com sucesso!")
+          st.rerun()
+        else:
+          st.warning("Preencha o nome e o link do material.")
+
+    if len(data_mat) > 1:
+      rows_mat = [
+          {
+              "Material": r[0] if len(r) > 0 else "",
+              "Tipo": r[1] if len(r) > 1 else "",
+              "Link": r[2] if len(r) > 2 else "",
+          }
+          for r in data_mat[1:]
+      ]
+      df_mat = pd.DataFrame(rows_mat)
+
+      st.markdown("### 📑 Seus Materiais de Apoio Cadastrados")
+
+      for idx, row in df_mat.iterrows():
+        c_m1, c_m2, c_m3 = st.columns([3, 2, 2])
+        with c_m1:
+          st.write(f"**{row['Material']}**")
+        with c_m2:
+          st.caption(f"Tipo: {row['Tipo']}")
+        with c_m3:
+          link_val_m = row["Link"]
+          if link_val_m and link_val_m.strip() != "":
+            st.markdown(
+                f'<a href="{link_val_m}" target="_blank" class="custom-btn-link"'
+                ' style="text-decoration: none !important;"><div'
+                ' style="background-color: #2980B9; padding: 8px 12px;'
+                ' text-align: center; border-radius: 6px; box-shadow: 0px 1px'
+                ' 3px rgba(0,0,0,0.2);"><span style="color: #FFFFFF !important;'
+                ' font-size: 13px; font-weight: bold; text-decoration: none'
+                ' !important;">📖 Abrir Material</span></div></a>',
+                unsafe_allow_html=True,
+            )
+          else:
+            st.caption("Sem link")
+        st.divider()
+
+      st.markdown("---")
+      st.markdown("### ✏️ Gerenciar / Excluir Material")
+      mat_del = st.selectbox(
+          "Selecione o material para remover:",
+          [""] + df_mat["Material"].tolist(),
+          key="select_mat_del",
+      )
+
+      if mat_del:
+        if st.button(
+            "🗑️ Excluir Material Selecionado",
+            type="primary",
+            key="btn_del_mat",
+        ):
+          idx_linha_mat = df_mat[df_mat["Material"] == mat_del].index[0] + 2
+          sheet_mat_obj.delete_rows(idx_linha_mat)
+          limpar_cache()
+          st.success(f"Material '{mat_del}' removido!")
+          st.rerun()
+    else:
+      st.info(
+          "Nenhum material de apoio cadastrado ainda. Use o campo acima para"
+          " cadastrar apostilas, livros e métodos do GoodNotes."
+      )
+  except Exception as e:
+    st.info(
+        "Certifique-se de ter criado uma aba chamada **'Materiais_Apoio'** na"
+        f" sua planilha do Google Drive. Detalhes: {e}"
+    )
+
 # --- ABA 3: DASHBOARD / ANÁLISE DE TEMPO ---
 with aba3:
   st.subheader("📊 Métricas e Análise de Tempo")
@@ -418,7 +533,6 @@ with aba3:
       df_log = pd.DataFrame(rows_log)
       df_log["Minutos_Num"] = pd.to_numeric(df_log["Minutos"], errors="coerce")
 
-      # Trata a data para ordenação cronológica correta
       df_log["Data_DT"] = pd.to_datetime(
           df_log["Data"], format="%d/%m/%Y", errors="coerce"
       )
@@ -444,7 +558,6 @@ with aba3:
 
       st.markdown("---")
 
-      # NOVO 1: GRÁFICO DE ESTUDOS POR DIA (EVOLUÇÃO DIÁRIA)
       st.write("### 📅 1. Tempo Estudado por Dia (O que foi estudado)")
       df_diario = (
           df_log_valido.groupby(["Data_DT", "Data", "Obra"])["Minutos_Num"]
@@ -463,7 +576,7 @@ with aba3:
           color_discrete_sequence=px.colors.qualitative.Plotly,
           barmode="stack",
       )
-      fig_diario.update_xaxes(type="category")  # Garante ordenação cronológica
+      fig_diario.update_xaxes(type="category")
       fig_diario.update_layout(
           legend=dict(
               orientation="h", yanchor="bottom", y=-0.5, xanchor="center", x=0.5
@@ -474,7 +587,6 @@ with aba3:
 
       st.markdown("---")
 
-      # NOVO 2: SEÇÃO DE ANÁLISE DETALHADA POR OBRA
       st.write("### 🔍 2. Histórico e Dias Estudados por Obra")
       lista_obras_unicas = sorted(df_log_valido["Obra"].unique().tolist())
 
@@ -505,7 +617,6 @@ with aba3:
         with o_col3:
           st.metric("Sessões na Obra", f"{len(df_obra_sel)}")
 
-        # Gráfico dos dias em que esta obra foi estudada
         df_obra_dias = (
             df_obra_sel.groupby(["Data_DT", "Data", "Tipo"])["Minutos_Num"]
             .sum()
@@ -538,7 +649,6 @@ with aba3:
 
       st.markdown("---")
 
-      # GRÁFICO 3: PORCENTAGEM DE TEMPO POR OBRA
       st.write("### 🍩 3. Porcentagem Geral de Tempo por Obra")
       df_agrupado_obra = (
           df_log_valido.groupby("Obra")["Minutos_Num"]
@@ -573,7 +683,6 @@ with aba3:
 
       st.markdown("---")
 
-      # GRÁFICO 4: PORCENTAGEM POR TIPO DE ESTUDO
       st.write("### 🎯 4. Porcentagem Geral por Tipo de Estudo")
       df_agrupado_tipo = (
           df_log_valido.groupby("Tipo")["Minutos_Num"]
@@ -608,7 +717,6 @@ with aba3:
 
       st.markdown("---")
 
-      # GRÁFICO 5: OBRA X TIPO DE ESTUDO (BARRAS EMPILHADAS)
       st.write("### 🎼 5. Distribuição de Foco por Obra (Minutos)")
       df_obra_tipo = (
           df_log_valido.groupby(["Obra", "Tipo"])["Minutos_Num"]
@@ -741,12 +849,28 @@ with aba3:
 # --- ABA 4: LEITURAS ---
 with aba4:
   st.subheader("📚 Leituras & Fichamento da Tese")
+
+  # NOVO: BOTÃO DE ACESSO RÁPIDO AO NOTEBOOKLM
+  st.markdown(
+      '<a href="https://notebooklm.google.com/" target="_blank"'
+      ' class="custom-btn-link" style="text-decoration: none !important;"><div'
+      ' style="background-color: #4285F4; padding: 12px; text-align: center;'
+      ' border-radius: 8px; margin-top: 4px; margin-bottom: 16px;"><span'
+      ' style="color: #FFFFFF !important; font-size: 16px; font-weight: bold;'
+      ' text-decoration: none !important;">🧠 Abrir NotebookLM</span></div></a>',
+      unsafe_allow_html=True,
+  )
+
+  st.markdown("---")
+
   try:
     sheet_l_obj = sh_global.worksheet("Leituras")
     data_l = carregar_dados_planilha("Leituras")
 
     with st.expander("➕ Adicionar Nova Leitura"):
-      novo_artigo = st.text_input("Título / Autor do Texto", key="input_novo_artigo")
+      novo_artigo = st.text_input(
+          "Título / Autor do Texto", key="input_novo_artigo"
+      )
       status_leitura = st.selectbox(
           "Status", opcoes_leitura, key="status_novo_artigo"
       )
@@ -785,7 +909,9 @@ with aba4:
         artigo = r[0] if len(r) > 0 else ""
         status = r[1] if len(r) > 1 else "Não Lido"
         anotacao = r[2] if len(r) > 2 else ""
-        app_origem = r[3] if len(r) > 3 else "Pré-visualização (PDF / Web / Arquivo)"
+        app_origem = (
+            r[3] if len(r) > 3 else "Pré-visualização (PDF / Web / Arquivo)"
+        )
         link_doc = r[4] if len(r) > 4 else ""
         rows.append([artigo, status, anotacao, app_origem, link_doc])
 
@@ -906,7 +1032,6 @@ with aba4:
     st.error(f"Erro ao carregar a aba Leituras: {e}")
 
 # --- ABA 5: OBRAS EXTRAS ---
-# MUDANÇA: Nova seção dedicada espelhando a funcionalidade do repertório, mas isolada no Sheets.
 with aba5:
   st.subheader("🎸 Obras Extras")
   try:
@@ -914,19 +1039,26 @@ with aba5:
     data_extra = carregar_dados_planilha("Obras_Extras")
 
     with st.expander("➕ Adicionar Nova Obra Extra"):
-      nova_obra_extra = st.text_input("Nome da Obra Extra", key="input_nova_obra_extra")
+      nova_obra_extra = st.text_input(
+          "Nome da Obra Extra", key="input_nova_obra_extra"
+      )
       novo_status_extra = st.selectbox(
           "Status", opcoes_status_obra, key="status_nova_obra_extra"
       )
       link_gn_extra = st.text_input(
           "Link / URL da Partitura (Opcional):",
           key="link_gn_novo_extra",
-          help="Cole aqui o link do documento para abrir a partitura direto no iPad.",
+          help=(
+              "Cole aqui o link do documento para abrir a partitura direto no"
+              " iPad."
+          ),
       )
 
       if st.button("Salvar Obra Extra"):
         if nova_obra_extra:
-          sheet_extra_obj.append_row([nova_obra_extra, novo_status_extra, link_gn_extra])
+          sheet_extra_obj.append_row(
+              [nova_obra_extra, novo_status_extra, link_gn_extra]
+          )
           limpar_cache()
           st.success("Obra extra adicionada com sucesso!")
           st.rerun()
@@ -956,13 +1088,14 @@ with aba5:
           link_val_extra = row["GoodNotes Link"]
           if link_val_extra and link_val_extra.strip() != "":
             st.markdown(
-                f'<a href="{link_val_extra}" target="_blank" class="custom-btn-link"'
-                ' style="text-decoration: none !important;"><div'
-                ' style="background-color: #D35400; padding: 8px 12px;'
-                ' text-align: center; border-radius: 6px; box-shadow: 0px 1px'
-                ' 3px rgba(0,0,0,0.2);"><span style="color: #FFFFFF !important;'
-                ' font-size: 13px; font-weight: bold; text-decoration: none'
-                ' !important;">🎵 Abrir Partitura</span></div></a>',
+                f'<a href="{link_val_extra}" target="_blank"'
+                ' class="custom-btn-link" style="text-decoration: none'
+                ' !important;"><div style="background-color: #D35400; padding:'
+                ' 8px 12px; text-align: center; border-radius: 6px; box-shadow:'
+                ' 0px 1px 3px rgba(0,0,0,0.2);"><span style="color: #FFFFFF'
+                ' !important; font-size: 13px; font-weight: bold;'
+                ' text-decoration: none !important;">🎵 Abrir'
+                " Partitura</span></div></a>",
                 unsafe_allow_html=True,
             )
           else:
@@ -978,7 +1111,9 @@ with aba5:
       )
 
       if obra_extra_del:
-        if st.button("🗑️ Excluir Obra Selecionada", type="primary", key="btn_del_extra"):
+        if st.button(
+            "🗑️ Excluir Obra Selecionada", type="primary", key="btn_del_extra"
+        ):
           index_linha_extra = (
               df_extra[df_extra["Obra"] == obra_extra_del].index[0] + 2
           )
@@ -989,4 +1124,7 @@ with aba5:
     else:
       st.info("Nenhuma obra extra cadastrada ainda.")
   except Exception as e:
-    st.error(f"Erro ao carregar a aba Obras_Extras. Certifique-se de que você criou uma aba chamada 'Obras_Extras' na sua planilha. Erro: {e}")
+    st.error(
+        "Erro ao carregar a aba Obras_Extras. Certifique-se de que você criou"
+        " uma aba chamada 'Obras_Extras' na sua planilha. Erro: {e}"
+    )
