@@ -84,7 +84,8 @@ def gerar_botao_afinador():
     """
 
 
-st.set_page_config(page_title="Doutorado UFRGS", page_icon="🎸", layout="centered")
+# MUDANÇA: Título da página atualizado
+st.set_page_config(page_title="Dashboard de Estudos - Doutorado", page_icon="🎸", layout="centered")
 
 # --- CSS GLOBAL PARA FORÇAR CORES DOS BOTÕES ---
 st.markdown(
@@ -104,10 +105,12 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.title("🎸 Doutorado UFRGS")
+# MUDANÇA: Título principal do App atualizado
+st.title("🎸 Doutorado UFRGS - Dashboard de Estudos")
 
-aba1, aba2, aba3, aba4 = st.tabs(
-    ["⏱️ Timer/Estudos", "🎼 Repertório", "📊 Análise de Tempo", "📚 Leituras"]
+# MUDANÇA: Adicionada a aba 5 para Obras Extras
+aba1, aba2, aba3, aba4, aba5 = st.tabs(
+    ["⏱️ Timer/Estudos", "🎼 Repertório", "📊 Análise de Tempo", "📚 Leituras", "🎸 Obras Extras"]
 )
 
 # Inicializa a planilha globalmente com tratamento amigável de erro 429
@@ -138,8 +141,6 @@ opcoes_status_obra = [
     "5. Manutenção",
     "6. Pronta / Performada",
 ]
-
-opcoes_categoria_obra = ["Recital", "Obra Extra"]
 
 opcoes_leitura = ["Não Lido", "Lendo", "Lido", "Fichado para Tese"]
 opcoes_app = ["Pré-visualização (PDF / Web / Arquivo)", "GoodNotes"]
@@ -214,6 +215,14 @@ with aba1:
     lista_obras = []
     if len(data_rep) > 1:
       lista_obras = [r[0] for r in data_rep[1:] if r[0]]
+      
+    # MUDANÇA: Tenta carregar também as obras extras para que você possa registrar tempo nelas!
+    try:
+        data_extras = carregar_dados_planilha("Obras_Extras")
+        if len(data_extras) > 1:
+            lista_obras.extend([r[0] for r in data_extras[1:] if r[0]])
+    except Exception:
+        pass # Ignora se a aba ainda não existir
 
     if lista_obras:
       with st.form("form_log_tempo", clear_on_submit=True):
@@ -252,7 +261,7 @@ with aba1:
           st.rerun()
     else:
       st.info(
-          "Cadastre obras na aba 'Repertório' para começar a registrar o tempo."
+          "Cadastre obras na aba 'Repertório' ou 'Obras Extras' para começar a registrar o tempo."
       )
   except Exception as e:
     st.error(f"Erro ao carregar repertório: {e}")
@@ -299,26 +308,16 @@ with aba1:
 
 # --- ABA 2: REPERTÓRIO ---
 with aba2:
-  st.subheader("🎼 Gestão de Repertório")
+  st.subheader("🎼 Repertório")
   try:
     sheet_rep_obj = sh_global.worksheet("Repertorio")
     data = carregar_dados_planilha("Repertorio")
 
     with st.expander("➕ Adicionar Nova Obra"):
       nova_obra = st.text_input("Nome da Obra", key="input_nova_obra_rep")
-      c_add1, c_add2 = st.columns(2)
-      with c_add1:
-        novo_status = st.selectbox(
-            "Status", opcoes_status_obra, key="status_nova_obra"
-        )
-      with c_add2:
-        nova_categoria = st.selectbox(
-            "Categoria da Obra:",
-            opcoes_categoria_obra,
-            key="cat_nova_obra",
-            help="Defina se pertence ao programa do recital ou é um repertório extra.",
-        )
-
+      novo_status = st.selectbox(
+          "Status", opcoes_status_obra, key="status_nova_obra"
+      )
       link_goodnotes = st.text_input(
           "Link / URL da Partitura no GoodNotes (Opcional):",
           key="link_gn_novo_rep",
@@ -327,9 +326,7 @@ with aba2:
 
       if st.button("Salvar Obra"):
         if nova_obra:
-          sheet_rep_obj.append_row(
-              [nova_obra, novo_status, link_goodnotes, nova_categoria]
-          )
+          sheet_rep_obj.append_row([nova_obra, novo_status, link_goodnotes])
           limpar_cache()
           st.success("Obra adicionada com sucesso!")
           st.rerun()
@@ -337,82 +334,40 @@ with aba2:
           st.warning("Digite o nome da obra.")
 
     if len(data) > 1:
-      rows = []
-      for r in data[1:]:
-        rows.append({
-            "Obra": r[0] if len(r) > 0 else "",
-            "Status": r[1] if len(r) > 1 else "",
-            "GoodNotes Link": r[2] if len(r) > 2 else "",
-            "Categoria": r[3] if len(r) > 3 else "Recital",
-        })
+      rows = [
+          {
+              "Obra": r[0] if len(r) > 0 else "",
+              "Status": r[1] if len(r) > 1 else "",
+              "GoodNotes Link": r[2] if len(r) > 2 else "",
+          }
+          for r in data[1:]
+      ]
       df_rep = pd.DataFrame(rows)
 
-      # 1. SEÇÃO: REPERTÓRIO DO RECITAL
-      st.markdown("### 📋 Repertório do Recital")
-      df_recital = df_rep[df_rep["Categoria"] == "Recital"]
+      st.markdown("### 📋 Suas Obras Cadastradas")
 
-      if not df_recital.empty:
-        for idx, row in df_recital.iterrows():
-          c_rep1, c_rep2, c_rep3 = st.columns([3, 2, 2])
-          with c_rep1:
-            st.write(f"**{row['Obra']}**")
-          with c_rep2:
-            st.caption(f"Status: {row['Status']}")
-          with c_rep3:
-            link_val = row["GoodNotes Link"]
-            if link_val and link_val.strip() != "":
-              st.markdown(
-                  f'<a href="{link_val}" target="_blank"'
-                  ' class="custom-btn-link" style="text-decoration: none'
-                  ' !important;"><div style="background-color: #1E8449;'
-                  ' padding: 8px 12px; text-align: center; border-radius: 6px;'
-                  ' box-shadow: 0px 1px 3px rgba(0,0,0,0.2);"><span'
-                  ' style="color: #FFFFFF !important; font-size: 13px;'
-                  ' font-weight: bold; text-decoration: none !important;">🎵'
-                  " Abrir Partitura</span></div></a>",
-                  unsafe_allow_html=True,
-              )
-            else:
-              st.caption("Sem link")
-          st.divider()
-      else:
-        st.info("Nenhuma obra cadastrada para o Recital.")
-
-      st.markdown("---")
-
-      # 2. SEÇÃO: OBRAS EXTRAS
-      st.markdown("### 📂 Obras Extras")
-      df_extras = df_rep[df_rep["Categoria"] == "Obra Extra"]
-
-      if not df_extras.empty:
-        for idx, row in df_extras.iterrows():
-          c_ext1, c_ext2, c_ext3 = st.columns([3, 2, 2])
-          with c_ext1:
-            st.write(f"**{row['Obra']}**")
-          with c_ext2:
-            st.caption(f"Status: {row['Status']}")
-          with c_ext3:
-            link_val = row["GoodNotes Link"]
-            if link_val and link_val.strip() != "":
-              st.markdown(
-                  f'<a href="{link_val}" target="_blank"'
-                  ' class="custom-btn-link" style="text-decoration: none'
-                  ' !important;"><div style="background-color: #1E8449;'
-                  ' padding: 8px 12px; text-align: center; border-radius: 6px;'
-                  ' box-shadow: 0px 1px 3px rgba(0,0,0,0.2);"><span'
-                  ' style="color: #FFFFFF !important; font-size: 13px;'
-                  ' font-weight: bold; text-decoration: none !important;">🎵'
-                  " Abrir Partitura</span></div></a>",
-                  unsafe_allow_html=True,
-              )
-            else:
-              st.caption("Sem link")
-          st.divider()
-      else:
-        st.info(
-            "Nenhuma obra extra cadastrada. Adicione obras marcadas como 'Obra"
-            " Extra' no formulário acima."
-        )
+      for idx, row in df_rep.iterrows():
+        c_rep1, c_rep2, c_rep3 = st.columns([3, 2, 2])
+        with c_rep1:
+          st.write(f"**{row['Obra']}**")
+        with c_rep2:
+          st.caption(f"Status: {row['Status']}")
+        with c_rep3:
+          link_val = row["GoodNotes Link"]
+          if link_val and link_val.strip() != "":
+            st.markdown(
+                f'<a href="{link_val}" target="_blank" class="custom-btn-link"'
+                ' style="text-decoration: none !important;"><div'
+                ' style="background-color: #1E8449; padding: 8px 12px;'
+                ' text-align: center; border-radius: 6px; box-shadow: 0px 1px'
+                ' 3px rgba(0,0,0,0.2);"><span style="color: #FFFFFF !important;'
+                ' font-size: 13px; font-weight: bold; text-decoration: none'
+                ' !important;">🎵 Abrir Partitura</span></div></a>',
+                unsafe_allow_html=True,
+            )
+          else:
+            st.caption("Sem link")
+        st.divider()
 
       st.markdown("---")
       st.markdown("### ✏️ Gerenciar / Excluir Obra")
@@ -489,7 +444,7 @@ with aba3:
 
       st.markdown("---")
 
-      # 1: GRÁFICO DE ESTUDOS POR DIA (EVOLUÇÃO DIÁRIA)
+      # NOVO 1: GRÁFICO DE ESTUDOS POR DIA (EVOLUÇÃO DIÁRIA)
       st.write("### 📅 1. Tempo Estudado por Dia (O que foi estudado)")
       df_diario = (
           df_log_valido.groupby(["Data_DT", "Data", "Obra"])["Minutos_Num"]
@@ -508,7 +463,7 @@ with aba3:
           color_discrete_sequence=px.colors.qualitative.Plotly,
           barmode="stack",
       )
-      fig_diario.update_xaxes(type="category")
+      fig_diario.update_xaxes(type="category")  # Garante ordenação cronológica
       fig_diario.update_layout(
           legend=dict(
               orientation="h", yanchor="bottom", y=-0.5, xanchor="center", x=0.5
@@ -519,7 +474,7 @@ with aba3:
 
       st.markdown("---")
 
-      # 2: SEÇÃO DE ANÁLISE DETALHADA POR OBRA
+      # NOVO 2: SEÇÃO DE ANÁLISE DETALHADA POR OBRA
       st.write("### 🔍 2. Histórico e Dias Estudados por Obra")
       lista_obras_unicas = sorted(df_log_valido["Obra"].unique().tolist())
 
@@ -949,3 +904,89 @@ with aba4:
               st.warning("Marque a caixa de confirmação antes de excluir.")
   except Exception as e:
     st.error(f"Erro ao carregar a aba Leituras: {e}")
+
+# --- ABA 5: OBRAS EXTRAS ---
+# MUDANÇA: Nova seção dedicada espelhando a funcionalidade do repertório, mas isolada no Sheets.
+with aba5:
+  st.subheader("🎸 Obras Extras")
+  try:
+    sheet_extra_obj = sh_global.worksheet("Obras_Extras")
+    data_extra = carregar_dados_planilha("Obras_Extras")
+
+    with st.expander("➕ Adicionar Nova Obra Extra"):
+      nova_obra_extra = st.text_input("Nome da Obra Extra", key="input_nova_obra_extra")
+      novo_status_extra = st.selectbox(
+          "Status", opcoes_status_obra, key="status_nova_obra_extra"
+      )
+      link_gn_extra = st.text_input(
+          "Link / URL da Partitura (Opcional):",
+          key="link_gn_novo_extra",
+          help="Cole aqui o link do documento para abrir a partitura direto no iPad.",
+      )
+
+      if st.button("Salvar Obra Extra"):
+        if nova_obra_extra:
+          sheet_extra_obj.append_row([nova_obra_extra, novo_status_extra, link_gn_extra])
+          limpar_cache()
+          st.success("Obra extra adicionada com sucesso!")
+          st.rerun()
+        else:
+          st.warning("Digite o nome da obra.")
+
+    if len(data_extra) > 1:
+      rows_extra = [
+          {
+              "Obra": r[0] if len(r) > 0 else "",
+              "Status": r[1] if len(r) > 1 else "",
+              "GoodNotes Link": r[2] if len(r) > 2 else "",
+          }
+          for r in data_extra[1:]
+      ]
+      df_extra = pd.DataFrame(rows_extra)
+
+      st.markdown("### 📋 Suas Obras Extras Cadastradas")
+
+      for idx, row in df_extra.iterrows():
+        c_ex1, c_ex2, c_ex3 = st.columns([3, 2, 2])
+        with c_ex1:
+          st.write(f"**{row['Obra']}**")
+        with c_ex2:
+          st.caption(f"Status: {row['Status']}")
+        with c_ex3:
+          link_val_extra = row["GoodNotes Link"]
+          if link_val_extra and link_val_extra.strip() != "":
+            st.markdown(
+                f'<a href="{link_val_extra}" target="_blank" class="custom-btn-link"'
+                ' style="text-decoration: none !important;"><div'
+                ' style="background-color: #D35400; padding: 8px 12px;'
+                ' text-align: center; border-radius: 6px; box-shadow: 0px 1px'
+                ' 3px rgba(0,0,0,0.2);"><span style="color: #FFFFFF !important;'
+                ' font-size: 13px; font-weight: bold; text-decoration: none'
+                ' !important;">🎵 Abrir Partitura</span></div></a>',
+                unsafe_allow_html=True,
+            )
+          else:
+            st.caption("Sem link")
+        st.divider()
+
+      st.markdown("---")
+      st.markdown("### ✏️ Gerenciar / Excluir Obra Extra")
+      obra_extra_del = st.selectbox(
+          "Selecione a obra para remover:",
+          [""] + df_extra["Obra"].tolist(),
+          key="select_obra_extra_del",
+      )
+
+      if obra_extra_del:
+        if st.button("🗑️ Excluir Obra Selecionada", type="primary", key="btn_del_extra"):
+          index_linha_extra = (
+              df_extra[df_extra["Obra"] == obra_extra_del].index[0] + 2
+          )
+          sheet_extra_obj.delete_rows(index_linha_extra)
+          limpar_cache()
+          st.success(f"Obra extra '{obra_extra_del}' removida!")
+          st.rerun()
+    else:
+      st.info("Nenhuma obra extra cadastrada ainda.")
+  except Exception as e:
+    st.error(f"Erro ao carregar a aba Obras_Extras. Certifique-se de que você criou uma aba chamada 'Obras_Extras' na sua planilha. Erro: {e}")
