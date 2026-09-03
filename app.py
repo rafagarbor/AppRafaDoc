@@ -10,6 +10,9 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+# --- LINK DO SEU QUADRO NO FREEFORM ---
+URL_QUADRO_FREEFORM = "https://www.icloud.com/freeform-copy/89485FDC-86D6-422C-AD27-F0C505E612C0#Tese_-_Brainstorming"
+
 # --- FUSO HORÁRIO DE BRASÍLIA ---
 TZ_BRT = ZoneInfo("America/Sao_Paulo")
 
@@ -112,7 +115,7 @@ st.markdown(
 
 st.title("🎸 Doutorado UFRGS - Dashboard de Estudos")
 
-# Reordenação das abas: Obras Extras logo após Repertório
+# Reordenação das abas
 aba1, aba2, aba5, aba3, aba4 = st.tabs([
     "⏱️ Timer/Estudos",
     "🎼 Repertório",
@@ -355,7 +358,6 @@ with aba2:
       ]
       df_rep = pd.DataFrame(rows)
 
-      # TÍTULO ALTERADO CONFORME SOLICITADO
       st.markdown("### 📋 Obras do Recital")
 
       for idx, row in df_rep.iterrows():
@@ -406,7 +408,7 @@ with aba2:
   st.markdown("---")
   st.markdown("---")
 
-  # SEÇÃO MATERIAIS DE APOIO (LIVROS, APOSTILAS, MÉTODOS NO GOODNOTES)
+  # SEÇÃO MATERIAIS DE APOIO
   st.subheader("📚 Materiais de Apoio & Métodos (GoodNotes)")
   try:
     sheet_mat_obj = sh_global.worksheet("Materiais_Apoio")
@@ -508,7 +510,7 @@ with aba2:
         f" sua planilha do Google Drive. Detalhes: {e}"
     )
 
-# --- ABA 5 (AGORA A 3ª NA ORDEM): OBRAS EXTRAS ---
+# --- ABA 5: OBRAS EXTRAS ---
 with aba5:
   st.subheader("🎸 Obras Extras")
   try:
@@ -950,15 +952,30 @@ with aba3:
 with aba4:
   st.subheader("📚 Leituras & Fichamento da Tese")
 
-  st.markdown(
-      '<a href="https://notebooklm.google.com/" target="_blank"'
-      ' class="custom-btn-link" style="text-decoration: none !important;"><div'
-      ' style="background-color: #4285F4; padding: 12px; text-align: center;'
-      ' border-radius: 8px; margin-top: 4px; margin-bottom: 16px;"><span'
-      ' style="color: #FFFFFF !important; font-size: 16px; font-weight: bold;'
-      ' text-decoration: none !important;">🧠 Abrir NotebookLM</span></div></a>',
-      unsafe_allow_html=True,
-  )
+  # Botões de Atalho: NotebookLM e Freeform lado a lado
+  col_ferramenta1, col_ferramenta2 = st.columns(2)
+
+  with col_ferramenta1:
+    st.markdown(
+        '<a href="https://notebooklm.google.com/" target="_blank"'
+        ' class="custom-btn-link" style="text-decoration: none !important;"><div'
+        ' style="background-color: #4285F4; padding: 12px; text-align: center;'
+        ' border-radius: 8px; margin-top: 4px; margin-bottom: 16px;"><span'
+        ' style="color: #FFFFFF !important; font-size: 15px; font-weight: bold;'
+        ' text-decoration: none !important;">🧠 NotebookLM</span></div></a>',
+        unsafe_allow_html=True,
+    )
+
+  with col_ferramenta2:
+    st.markdown(
+        f'<a href="{URL_QUADRO_FREEFORM}" target="_blank"'
+        ' class="custom-btn-link" style="text-decoration: none !important;"><div'
+        ' style="background-color: #FF5A00; padding: 12px; text-align: center;'
+        ' border-radius: 8px; margin-top: 4px; margin-bottom: 16px;"><span'
+        ' style="color: #FFFFFF !important; font-size: 15px; font-weight: bold;'
+        ' text-decoration: none !important;">🎨 Quadro Freeform</span></div></a>',
+        unsafe_allow_html=True,
+    )
 
   st.markdown("---")
 
