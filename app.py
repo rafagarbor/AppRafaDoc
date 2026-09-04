@@ -1,9 +1,10 @@
 import base64
-from datetime import datetime, date
-from zoneinfo import ZoneInfo
+from datetime import date, datetime
 import json
 import time
 import urllib.parse
+from zoneinfo import ZoneInfo
+
 from google.oauth2.service_account import Credentials
 import gspread
 import pandas as pd
@@ -11,7 +12,9 @@ import plotly.express as px
 import streamlit as st
 
 # --- LINK DO SEU QUADRO NO FREEFORM ---
-URL_QUADRO_FREEFORM = "https://www.icloud.com/freeform/0a7R0CLXWwjEwloLYfZ5OUApA#Tese_-_Brainstorming"
+URL_QUADRO_FREEFORM = (
+    "https://www.icloud.com/freeform/0a7R0CLXWwjEwloLYfZ5OUApA#Tese_-_Brainstorming"
+)
 
 # --- FUSO HORÁRIO DE BRASÍLIA ---
 TZ_BRT = ZoneInfo("America/Sao_Paulo")
@@ -34,18 +37,29 @@ def get_client():
 
 @st.cache_resource
 def get_spreadsheet():
-  """Abre a planilha uma única vez com tratamento de taxa limite."""
+  """Abre a planilha com cache de recurso."""
   client = get_client()
-  time.sleep(0.5)
   return client.open("Doutorado_Estudos")
 
 
-@st.cache_data(ttl=600)  # Cache de 10 minutos para poupar a cota da API
+@st.cache_data(ttl=600, show_spinner=False)
 def carregar_dados_planilha(nome_aba):
-  sh = get_spreadsheet()
-  sheet = sh.worksheet(nome_aba)
-  time.sleep(0.3)
-  return sheet.get_all_values()
+  """Carrega dados da aba com sistema de re-tentativa para evitar travamento em 429/Timeout."""
+  max_tentativas = 3
+  for tentativa in range(max_tentativas):
+    try:
+      sh = get_spreadsheet()
+      sheet = sh.worksheet(nome_aba)
+      return sheet.get_all_values()
+    except Exception:
+      if tentativa < max_tentativas - 1:
+        time.sleep(1.5 * (tentativa + 1))  # Pausa antes de tentar de novo
+      else:
+        st.error(
+            f"⚠️ O Google Sheets demorou a responder ao ler '{nome_aba}'."
+            " Aguarde alguns segundos e atualize a página (F5)."
+        )
+        return []
 
 
 def limpar_cache():
@@ -645,8 +659,13 @@ with aba3:
       total_minutos = df_log_valido["Minutos_Num"].sum()
       total_horas = round(total_minutos / 60, 1)
       dias_estudados_total = df_log_valido["Data"].nunique()
+      media_minutos_dia = (
+          round(total_minutos / dias_estudados_total, 1)
+          if dias_estudados_total > 0
+          else 0.0
+      )
 
-      m_col1, m_col2, m_col3 = st.columns(3)
+      m_col1, m_col2, m_col3, m_col4 = st.columns(4)
       with m_col1:
         st.metric(
             "Total Estudado",
@@ -654,8 +673,10 @@ with aba3:
             f"{int(total_minutos)} minutos",
         )
       with m_col2:
-        st.metric("Dias Praticados", f"{dias_estudados_total} dia(s)")
+        st.metric("Média / Dia", f"{media_minutos_dia} min")
       with m_col3:
+        st.metric("Dias Praticados", f"{dias_estudados_total} dia(s)")
+      with m_col4:
         st.metric("Sessões Registradas", f"{len(df_log_valido)}")
 
       st.markdown("---")
