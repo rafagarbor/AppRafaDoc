@@ -188,29 +188,92 @@ with aba1:
 
   st.markdown("---")
 
-  st.subheader("⏱️ Temporizador Rápido (Nativo iOS)")
-  col1, col2, col3, col4 = st.columns(4)
+  # --- TEMPORIZADOR RÁPIDO & REGISTRO AUTOMÁTICO ---
+  st.subheader("⏱️ Temporizador Rápido & Registro Automático")
 
-  with col1:
-    st.markdown(
-        gerar_botao_timer(45, cor="#2E7D32", texto_personalizado="🧠 45 min"),
-        unsafe_allow_html=True,
+  try:
+    data_rep = carregar_dados_planilha("Repertorio")
+    lista_obras = (
+        [r[0] for r in data_rep[1:] if r[0]] if len(data_rep) > 1 else []
     )
-  with col2:
-    st.markdown(
-        gerar_botao_timer(30, cor="#388E3C", texto_personalizado="🎯 30 min"),
-        unsafe_allow_html=True,
-    )
-  with col3:
-    st.markdown(
-        gerar_botao_timer(10, cor="#D35400", texto_personalizado="☕ 10 min"),
-        unsafe_allow_html=True,
-    )
-  with col4:
-    st.markdown(
-        gerar_botao_timer(5, cor="#C0392B", texto_personalizado="⚡ 5 min"),
-        unsafe_allow_html=True,
-    )
+
+    try:
+      data_extras = carregar_dados_planilha("Obras_Extras")
+      if len(data_extras) > 1:
+        lista_obras.extend([r[0] for r in data_extras[1:] if r[0]])
+    except Exception:
+      pass
+
+    if lista_obras:
+      c_sel1, c_sel2 = st.columns(2)
+      with c_sel1:
+        obra_rapida = st.selectbox(
+            "Selecione a Obra para praticar:",
+            lista_obras,
+            key="obra_timer_rapido",
+        )
+      with c_sel2:
+        tipo_rapido = st.selectbox(
+            "Foco / Tipo de Estudo:", tipos_estudo_opcoes, key="tipo_timer_rapido"
+        )
+
+      def acionar_timer_e_registrar(minutos):
+        sheet_log = sh_global.worksheet("Log_Tempo")
+        data_hoje_str = datetime.now(TZ_BRT).strftime("%d/%m/%Y")
+        sheet_log.append_row([
+            data_hoje_str,
+            obra_rapida,
+            str(minutos),
+            "Registro Automático via Timer",  # Observação inicial
+            tipo_rapido,
+        ])
+        limpar_cache()
+
+      col1, col2, col3, col4 = st.columns(4)
+
+      with col1:
+        if st.button("🧠 45 min", use_container_width=True):
+          acionar_timer_e_registrar(45)
+          st.markdown(
+              '<meta http-equiv="refresh"'
+              ' content="0;url=shortcuts://run-shortcut?name=IniciarTimer&input=text&text=45">',
+              unsafe_allow_html=True,
+          )
+          st.success("Registrado 45 min! Abrindo timer...")
+
+      with col2:
+        if st.button("🎯 30 min", use_container_width=True):
+          acionar_timer_e_registrar(30)
+          st.markdown(
+              '<meta http-equiv="refresh"'
+              ' content="0;url=shortcuts://run-shortcut?name=IniciarTimer&input=text&text=30">',
+              unsafe_allow_html=True,
+          )
+          st.success("Registrado 30 min! Abrindo timer...")
+
+      with col3:
+        if st.button("☕ 10 min", use_container_width=True):
+          acionar_timer_e_registrar(10)
+          st.markdown(
+              '<meta http-equiv="refresh"'
+              ' content="0;url=shortcuts://run-shortcut?name=IniciarTimer&input=text&text=10">',
+              unsafe_allow_html=True,
+          )
+          st.success("Registrado 10 min! Abrindo timer...")
+
+      with col4:
+        if st.button("⚡ 5 min", use_container_width=True):
+          acionar_timer_e_registrar(5)
+          st.markdown(
+              '<meta http-equiv="refresh"'
+              ' content="0;url=shortcuts://run-shortcut?name=IniciarTimer&input=text&text=5">',
+              unsafe_allow_html=True,
+          )
+          st.success("Registrado 5 min! Abrindo timer...")
+    else:
+      st.info("Cadastre obras para habilitar os timers automáticos.")
+  except Exception as e:
+    st.error(f"Erro ao carregar repertório: {e}")
 
   with st.expander("⚙️ Tempo Personalizado"):
     mins_custom = st.number_input(
@@ -233,21 +296,9 @@ with aba1:
     st.markdown(gerar_botao_afinador(), unsafe_allow_html=True)
 
   st.markdown("---")
-  st.subheader("⏱️ Registrar Tempo Estudado por Peça")
+  st.subheader("⏱️ Registrar Tempo Estudado Manualmente")
 
   try:
-    data_rep = carregar_dados_planilha("Repertorio")
-    lista_obras = []
-    if len(data_rep) > 1:
-      lista_obras = [r[0] for r in data_rep[1:] if r[0]]
-
-    try:
-      data_extras = carregar_dados_planilha("Obras_Extras")
-      if len(data_extras) > 1:
-        lista_obras.extend([r[0] for r in data_extras[1:] if r[0]])
-    except Exception:
-      pass
-
     if lista_obras:
       with st.form("form_log_tempo", clear_on_submit=True):
         c_form1, c_form2 = st.columns(2)
@@ -283,13 +334,8 @@ with aba1:
               f" '{obra_selecionada}'."
           )
           st.rerun()
-    else:
-      st.info(
-          "Cadastre obras na aba 'Repertório' ou 'Obras Extras' para começar a"
-          " registrar o tempo."
-      )
   except Exception as e:
-    st.error(f"Erro ao carregar repertório: {e}")
+    st.error(f"Erro ao carregar registro manual: {e}")
 
   st.markdown("---")
   st.subheader("📝 Reflexão (Diário iOS)")
