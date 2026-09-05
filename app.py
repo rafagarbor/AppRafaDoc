@@ -398,22 +398,63 @@ with aba2:
         st.divider()
 
       st.markdown("---")
-      st.markdown("### ✏️ Gerenciar / Excluir Obra")
-      obra_selecionada_del = st.selectbox(
-          "Selecione a obra para remover:",
+      st.markdown("### ✏️ Editar / Excluir Obra")
+      obra_selecionada_edit = st.selectbox(
+          "Selecione a obra para editar ou remover:",
           [""] + df_rep["Obra"].tolist(),
-          key="select_obra_del",
+          key="select_obra_edit",
       )
 
-      if obra_selecionada_del:
-        if st.button("🗑️ Excluir Obra Selecionada", type="primary"):
-          index_linha = (
-              df_rep[df_rep["Obra"] == obra_selecionada_del].index[0] + 2
+      if obra_selecionada_edit:
+        item_rep = df_rep[df_rep["Obra"] == obra_selecionada_edit].iloc[0]
+        row_idx_rep = df_rep[df_rep["Obra"] == obra_selecionada_edit].index[0] + 2
+
+        status_atual_rep = item_rep["Status"]
+        link_atual_rep = item_rep["GoodNotes Link"]
+
+        idx_status_rep = (
+            opcoes_status_obra.index(status_atual_rep)
+            if status_atual_rep in opcoes_status_obra
+            else 0
+        )
+
+        novo_status_rep = st.selectbox(
+            "Atualizar Status:",
+            opcoes_status_obra,
+            index=idx_status_rep,
+            key="edit_status_obra_val",
+        )
+
+        novo_link_rep = st.text_input(
+            "Link / URL da Partitura (GoodNotes):",
+            value=link_atual_rep,
+            key="edit_link_obra_val",
+        )
+
+        col_edit_rep1, col_edit_rep2 = st.columns(2)
+
+        with col_edit_rep1:
+          if st.button("Atualizar Obra", key="btn_update_obra"):
+            sheet_rep_obj.update_cell(row_idx_rep, 2, novo_status_rep)
+            sheet_rep_obj.update_cell(row_idx_rep, 3, novo_link_rep)
+            limpar_cache()
+            st.success(f"Obra '{obra_selecionada_edit}' atualizada com sucesso!")
+            st.rerun()
+
+        with col_edit_rep2:
+          confirmar_del_rep = st.checkbox(
+              "Confirmar exclusão da obra", key="check_del_rep"
           )
-          sheet_rep_obj.delete_rows(index_linha)
-          limpar_cache()
-          st.success(f"Obra '{obra_selecionada_del}' removida!")
-          st.rerun()
+          if st.button(
+              "🗑️ Excluir Obra Selecionada", type="primary", key="btn_del_obra"
+          ):
+            if confirmar_del_rep:
+              sheet_rep_obj.delete_rows(row_idx_rep)
+              limpar_cache()
+              st.success(f"Obra '{obra_selecionada_edit}' removida com sucesso!")
+              st.rerun()
+            else:
+              st.warning("Marque a caixa de confirmação antes de excluir.")
     else:
       st.info("Nenhuma obra cadastrada ainda.")
   except Exception as e:
@@ -596,24 +637,67 @@ with aba5:
         st.divider()
 
       st.markdown("---")
-      st.markdown("### ✏️ Gerenciar / Excluir Obra Extra")
-      obra_extra_del = st.selectbox(
-          "Selecione a obra para remover:",
+      st.markdown("### ✏️ Editar / Excluir Obra Extra")
+      obra_extra_edit = st.selectbox(
+          "Selecione a obra extra para editar ou remover:",
           [""] + df_extra["Obra"].tolist(),
-          key="select_obra_extra_del",
+          key="select_obra_extra_edit",
       )
 
-      if obra_extra_del:
-        if st.button(
-            "🗑️ Excluir Obra Selecionada", type="primary", key="btn_del_extra"
-        ):
-          index_linha_extra = (
-              df_extra[df_extra["Obra"] == obra_extra_del].index[0] + 2
+      if obra_extra_edit:
+        item_extra = df_extra[df_extra["Obra"] == obra_extra_edit].iloc[0]
+        row_idx_extra = (
+            df_extra[df_extra["Obra"] == obra_extra_edit].index[0] + 2
+        )
+
+        status_atual_extra = item_extra["Status"]
+        link_atual_extra = item_extra["GoodNotes Link"]
+
+        idx_status_extra = (
+            opcoes_status_obra.index(status_atual_extra)
+            if status_atual_extra in opcoes_status_obra
+            else 0
+        )
+
+        novo_status_extra = st.selectbox(
+            "Atualizar Status:",
+            opcoes_status_obra,
+            index=idx_status_extra,
+            key="edit_status_extra_val",
+        )
+
+        novo_link_extra = st.text_input(
+            "Link / URL da Partitura (GoodNotes):",
+            value=link_atual_extra,
+            key="edit_link_extra_val",
+        )
+
+        col_edit_ex1, col_edit_ex2 = st.columns(2)
+
+        with col_edit_ex1:
+          if st.button("Atualizar Obra Extra", key="btn_update_extra"):
+            sheet_extra_obj.update_cell(row_idx_extra, 2, novo_status_extra)
+            sheet_extra_obj.update_cell(row_idx_extra, 3, novo_link_extra)
+            limpar_cache()
+            st.success(
+                f"Obra extra '{obra_extra_edit}' atualizada com sucesso!"
+            )
+            st.rerun()
+
+        with col_edit_ex2:
+          confirmar_del_extra = st.checkbox(
+              "Confirmar exclusão da obra extra", key="check_del_extra"
           )
-          sheet_extra_obj.delete_rows(index_linha_extra)
-          limpar_cache()
-          st.success(f"Obra extra '{obra_extra_del}' removida!")
-          st.rerun()
+          if st.button(
+              "🗑️ Excluir Obra Selecionada", type="primary", key="btn_del_extra"
+          ):
+            if confirmar_del_extra:
+              sheet_extra_obj.delete_rows(row_idx_extra)
+              limpar_cache()
+              st.success(f"Obra extra '{obra_extra_edit}' removida!")
+              st.rerun()
+            else:
+              st.warning("Marque a caixa de confirmação antes de excluir.")
     else:
       st.info("Nenhuma obra extra cadastrada ainda.")
   except Exception as e:
