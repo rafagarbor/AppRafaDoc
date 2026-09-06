@@ -37,14 +37,12 @@ def get_client():
 
 @st.cache_resource
 def get_spreadsheet():
-  """Abre a planilha com cache de recurso."""
   client = get_client()
   return client.open("Doutorado_Estudos")
 
 
 @st.cache_data(ttl=600, show_spinner=False)
 def carregar_dados_planilha(nome_aba):
-  """Carrega dados da aba com sistema de re-tentativa para evitar travamento em 429/Timeout."""
   max_tentativas = 3
   for tentativa in range(max_tentativas):
     try:
@@ -53,7 +51,7 @@ def carregar_dados_planilha(nome_aba):
       return sheet.get_all_values()
     except Exception:
       if tentativa < max_tentativas - 1:
-        time.sleep(1.5 * (tentativa + 1))  # Pausa antes de tentar de novo
+        time.sleep(1.5 * (tentativa + 1))
       else:
         st.error(
             f"⚠️ O Google Sheets demorou a responder ao ler '{nome_aba}'."
@@ -67,7 +65,6 @@ def limpar_cache():
 
 
 def gerar_botao_timer(minutos, cor="#2E7D32", texto_personalizado=None):
-  """Gera botões HTML com forçamento rigoroso de fonte branca e negrito para o iOS."""
   url_timer = (
       f"shortcuts://run-shortcut?name=IniciarTimer&input=text&text={minutos}"
   )
@@ -82,7 +79,6 @@ def gerar_botao_timer(minutos, cor="#2E7D32", texto_personalizado=None):
 
 
 def gerar_botao_metronomo():
-  """Gera o botão para abrir o atalho do Metronome Beats no iOS."""
   url_metronomo = "shortcuts://run-shortcut?name=AbrirMetronomo"
   return f"""
     <a href="{url_metronomo}" class="custom-btn-link" style="text-decoration: none !important;">
@@ -94,7 +90,6 @@ def gerar_botao_metronomo():
 
 
 def gerar_botao_afinador():
-  """Gera o botão para abrir o atalho do Afinador no iOS."""
   url_afinador = "shortcuts://run-shortcut?name=AbrirAfinador"
   return f"""
     <a href="{url_afinador}" class="custom-btn-link" style="text-decoration: none !important;">
@@ -109,11 +104,9 @@ st.set_page_config(
     page_title="Dashboard de Estudos - Doutorado", page_icon="🎸", layout="centered"
 )
 
-# --- CSS GLOBAL PARA FORÇAR CORES DOS BOTÕES ---
 st.markdown(
     """
     <style>
-    /* Força qualquer link dentro de nossos componentes personalizados a ficar branco e sem sublinhado */
     .custom-btn-link, .custom-btn-link *, a.custom-btn-link, a.custom-btn-link span {
         color: #FFFFFF !important;
         text-decoration: none !important;
@@ -129,7 +122,6 @@ st.markdown(
 
 st.title("🎸 Doutorado UFRGS - Dashboard de Estudos")
 
-# Reordenação das abas
 aba1, aba2, aba5, aba3, aba4 = st.tabs([
     "⏱️ Timer/Estudos",
     "🎼 Repertório",
@@ -138,13 +130,11 @@ aba1, aba2, aba5, aba3, aba4 = st.tabs([
     "📚 Leituras",
 ])
 
-# Inicializa a planilha globalmente com tratamento amigável de erro 429
 try:
   sh_global = get_spreadsheet()
 except Exception as e:
   st.error(
       "⚠️ **Limite de requisições do Google atingido (Erro 429).** "
-      "O Google restringe temporariamente o acesso quando há muitas leituras seguidas. "
       "Aguarde cerca de **1 minuto** e atualize a página (F5).\n\n"
       f"Detalhes técnicos: {e}"
   )
@@ -188,7 +178,6 @@ with aba1:
 
   st.markdown("---")
 
-  # --- TEMPORIZADOR RÁPIDO & REGISTRO AUTOMÁTICO ---
   st.subheader("⏱️ Temporizador Rápido & Registro Automático")
 
   try:
@@ -218,7 +207,6 @@ with aba1:
         )
 
       def registrar_e_obter_link(minutos, cor="#2E7D32", texto_rotulo=None):
-        """Salva a sessão na planilha e retorna o botão HTML com link direto para o Atalho do iOS."""
         sheet_log = sh_global.worksheet("Log_Tempo")
         data_hoje_str = datetime.now(TZ_BRT).strftime("%d/%m/%Y")
         sheet_log.append_row([
@@ -266,25 +254,24 @@ with aba1:
           )
           st.success("Registrado! Clique abaixo para acionar o timer:")
           st.markdown(link_html, unsafe_allow_html=True)
+          
+      with st.expander("⚙️ Tempo Personalizado"):
+        mins_custom = st.number_input(
+            "Minutos de estudo:", min_value=1, max_value=180, value=25
+        )
+        if st.button("Registrar e Iniciar Customizado", key="btn_timer_custom"):
+          link_html = registrar_e_obter_link(
+              mins_custom, "#1976D2", f"⏰ Iniciar Timer Custom ({mins_custom} min)"
+          )
+          st.success(f"Registrado! {mins_custom} min. Clique abaixo para iniciar:")
+          st.markdown(link_html, unsafe_allow_html=True)
+
     else:
       st.info("Cadastre obras para habilitar os timers automáticos.")
   except Exception as e:
     st.error(f"Erro ao carregar repertório: {e}")
 
-  with st.expander("⚙️ Tempo Personalizado"):
-    mins_custom = st.number_input(
-        "Minutos de estudo:", min_value=1, max_value=180, value=25
-    )
-    st.markdown(
-        gerar_botao_timer(
-            mins_custom,
-            cor="#1976D2",
-            texto_personalizado=f"⏰ Iniciar Timer Customizado ({mins_custom} min)",
-        ),
-        unsafe_allow_html=True,
-    )
-
-  # Ferramentas musicais (Metrônomo e Afinador)
+  # Ferramentas musicais
   col_tool1, col_tool2 = st.columns(2)
   with col_tool1:
     st.markdown(gerar_botao_metronomo(), unsafe_allow_html=True)
@@ -314,7 +301,8 @@ with aba1:
 
         btn_salvar_tempo = st.form_submit_button("💾 Salvar Registro de Tempo")
 
-        if btn_salvar_tempo:
+      if btn_salvar_tempo:
+        try:
           sheet_log = sh_global.worksheet("Log_Tempo")
           data_hoje_str = datetime.now(TZ_BRT).strftime("%d/%m/%Y")
           sheet_log.append_row([
@@ -326,10 +314,12 @@ with aba1:
           ])
           limpar_cache()
           st.success(
-              f"Registrado! {minutos_estudados} min de {tipo_selecionado} em"
-              f" '{obra_selecionada}'."
+              f"✅ Registrado com sucesso! {minutos_estudados} min de"
+              f" {tipo_selecionado} em '{obra_selecionada}'."
           )
-          st.rerun()
+        except Exception as err:
+          st.error(f"Erro ao salvar na planilha: {err}")
+
   except Exception as e:
     st.error(f"Erro ao carregar registro manual: {e}")
 
@@ -1101,7 +1091,6 @@ with aba4:
 
   LINK_PASTA_DRIVE = "https://drive.google.com/drive/folders/16ev9V1MKw1Upy6XQRbU5BxXV6hMvrVio"
 
-  # Botões de Atalho: NotebookLM, Freeform e Google Drive lado a lado
   col_ferramenta1, col_ferramenta2, col_ferramenta3 = st.columns(3)
 
   with col_ferramenta1:
