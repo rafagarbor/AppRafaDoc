@@ -768,9 +768,11 @@ with aba3:
       df_log["Data_DT"] = pd.to_datetime(
           df_log["Data"], format="%d/%m/%Y", errors="coerce"
       )
+      
+      # O .copy() evita o SettingWithCopyWarning do Pandas
       df_log_valido = df_log.dropna(subset=["Minutos_Num", "Data_DT"]).sort_values(
           "Data_DT"
-      )
+      ).copy()
 
       total_minutos = df_log_valido["Minutos_Num"].sum()
       total_horas = round(total_minutos / 60, 1)
@@ -797,7 +799,38 @@ with aba3:
 
       st.markdown("---")
 
-      st.write("### 📅 1. Tempo Estudado por Dia (O que foi estudado)")
+      # ==============================================================
+      # NOVO: MAPA DE CONSTÂNCIA (HEATMAP)
+      # ==============================================================
+      st.write("### 🗺️ 1. Quadro de Constância")
+      st.caption("Acompanhe quais obras estão sendo tocadas e quais estão ficando para trás.")
+
+      # Cria uma coluna de data formatada apenas para exibição (Dia/Mês)
+      df_log_valido["Data_Str"] = df_log_valido["Data_DT"].dt.strftime('%d/%m')
+
+      # Cria a matriz cruzando as Obras (linhas) com as Datas (colunas)
+      matriz = pd.crosstab(df_log_valido["Obra"], df_log_valido["Data_Str"])
+
+      # Ordena as colunas cronologicamente (da data mais antiga para a mais recente)
+      datas_ordenadas = df_log_valido["Data_DT"].sort_values().dt.strftime('%d/%m').unique()
+      matriz = matriz.reindex(columns=datas_ordenadas)
+
+      # Trata a compatibilidade do Pandas (versões recentes usam map, antigas applymap)
+      try:
+          matriz_visual = matriz.map(lambda x: "🟩" if x > 0 else "⬜")
+      except AttributeError:
+          matriz_visual = matriz.applymap(lambda x: "🟩" if x > 0 else "⬜")
+
+      # Exibe a tabela na tela
+      st.dataframe(
+          matriz_visual,
+          use_container_width=True
+      )
+
+      st.markdown("---")
+      # ==============================================================
+
+      st.write("### 📅 2. Tempo Estudado por Dia (O que foi estudado)")
       df_diario = (
           df_log_valido.groupby(["Data_DT", "Data", "Obra"])["Minutos_Num"]
           .sum()
@@ -826,7 +859,7 @@ with aba3:
 
       st.markdown("---")
 
-      st.write("### 🔍 2. Histórico e Dias Estudados por Obra")
+      st.write("### 🔍 3. Histórico e Dias Estudados por Obra")
       lista_obras_unicas = sorted(df_log_valido["Obra"].unique().tolist())
 
       obra_filtro = st.selectbox(
@@ -888,7 +921,7 @@ with aba3:
 
       st.markdown("---")
 
-      st.write("### 🍩 3. Porcentagem Geral de Tempo por Obra")
+      st.write("### 🍩 4. Porcentagem Geral de Tempo por Obra")
       df_agrupado_obra = (
           df_log_valido.groupby("Obra")["Minutos_Num"]
           .sum()
@@ -922,7 +955,7 @@ with aba3:
 
       st.markdown("---")
 
-      st.write("### 🎯 4. Porcentagem Geral por Tipo de Estudo")
+      st.write("### 🎯 5. Porcentagem Geral por Tipo de Estudo")
       df_agrupado_tipo = (
           df_log_valido.groupby("Tipo")["Minutos_Num"]
           .sum()
@@ -956,7 +989,7 @@ with aba3:
 
       st.markdown("---")
 
-      st.write("### 🎼 5. Distribuição de Foco por Obra (Minutos)")
+      st.write("### 🎼 6. Distribuição de Foco por Obra (Minutos)")
       df_obra_tipo = (
           df_log_valido.groupby(["Obra", "Tipo"])["Minutos_Num"]
           .sum()
