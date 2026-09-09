@@ -254,20 +254,16 @@ with aba1:
           )
           st.success("Registrado! Clique abaixo para acionar o timer:")
           st.markdown(link_html, unsafe_allow_html=True)
-
+          
       with st.expander("⚙️ Tempo Personalizado"):
         mins_custom = st.number_input(
             "Minutos de estudo:", min_value=1, max_value=180, value=25
         )
         if st.button("Registrar e Iniciar Customizado", key="btn_timer_custom"):
           link_html = registrar_e_obter_link(
-              mins_custom,
-              "#1976D2",
-              f"⏰ Iniciar Timer Custom ({mins_custom} min)",
+              mins_custom, "#1976D2", f"⏰ Iniciar Timer Custom ({mins_custom} min)"
           )
-          st.success(
-              f"Registrado! {mins_custom} min. Clique abaixo para iniciar:"
-          )
+          st.success(f"Registrado! {mins_custom} min. Clique abaixo para iniciar:")
           st.markdown(link_html, unsafe_allow_html=True)
 
     else:
@@ -290,9 +286,7 @@ with aba1:
       with st.form("form_log_tempo", clear_on_submit=True):
         c_form1, c_form2 = st.columns(2)
         with c_form1:
-          obra_selecionada = st.selectbox(
-              "Selecione a Obra / Peça:", lista_obras
-          )
+          obra_selecionada = st.selectbox("Selecione a Obra / Peça:", lista_obras)
           minutos_estudados = st.number_input(
               "Minutos Praticados:", min_value=5, max_value=300, value=30, step=5
           )
@@ -774,12 +768,11 @@ with aba3:
       df_log["Data_DT"] = pd.to_datetime(
           df_log["Data"], format="%d/%m/%Y", errors="coerce"
       )
-
-      df_log_valido = (
-          df_log.dropna(subset=["Minutos_Num", "Data_DT"])
-          .sort_values("Data_DT")
-          .copy()
-      )
+      
+      # O .copy() evita o SettingWithCopyWarning do Pandas
+      df_log_valido = df_log.dropna(subset=["Minutos_Num", "Data_DT"]).sort_values(
+          "Data_DT"
+      ).copy()
 
       total_minutos = df_log_valido["Minutos_Num"].sum()
       total_horas = round(total_minutos / 60, 1)
@@ -807,49 +800,32 @@ with aba3:
       st.markdown("---")
 
       # ==============================================================
-      # MAPA DE CONSTÂNCIA (HEATMAP MODERNO VIA PLOTLY)
+      # NOVO: MAPA DE CONSTÂNCIA (HEATMAP)
       # ==============================================================
       st.write("### 🗺️ 1. Quadro de Constância")
-      st.caption(
-          "Acompanhe quais obras estão sendo tocadas e quais estão ficando para"
-          " trás."
-      )
+      st.caption("Acompanhe quais obras estão sendo tocadas e quais estão ficando para trás.")
 
-      df_log_valido["Data_Str"] = df_log_valido["Data_DT"].dt.strftime("%d/%m")
+      # Cria uma coluna de data formatada apenas para exibição (Dia/Mês)
+      df_log_valido["Data_Str"] = df_log_valido["Data_DT"].dt.strftime('%d/%m')
 
-      matriz = pd.crosstab(
-          df_log_valido["Obra"],
-          df_log_valido["Data_Str"],
-          values=df_log_valido["Minutos_Num"],
-          aggfunc="sum",
-      ).fillna(0)
+      # Cria a matriz cruzando as Obras (linhas) com as Datas (colunas)
+      matriz = pd.crosstab(df_log_valido["Obra"], df_log_valido["Data_Str"])
 
-      datas_ordenadas = (
-          df_log_valido["Data_DT"].sort_values().dt.strftime("%d/%m").unique()
-      )
-      matriz = matriz.reindex(columns=datas_ordenadas, fill_value=0)
+      # Ordena as colunas cronologicamente (da data mais antiga para a mais recente)
+      datas_ordenadas = df_log_valido["Data_DT"].sort_values().dt.strftime('%d/%m').unique()
+      matriz = matriz.reindex(columns=datas_ordenadas)
 
+      # Trata a compatibilidade do Pandas (versões recentes usam map, antigas applymap)
       try:
-        matriz_num = matriz.map(lambda x: 1 if x > 0 else 0)
+          matriz_visual = matriz.map(lambda x: "🟩" if x > 0 else "⬜")
       except AttributeError:
-        matriz_num = matriz.applymap(lambda x: 1 if x > 0 else 0)
+          matriz_visual = matriz.applymap(lambda x: "🟩" if x > 0 else "⬜")
 
-      fig_heatmap = px.imshow(
-          matriz_num,
-          labels=dict(x="Data", y="Obra", color="Prática"),
-          x=matriz.columns.tolist(),
-          y=matriz.index.tolist(),
-          color_continuous_scale=[[0, "#F1F5F9"], [1, "#2E7D32"]],
-          aspect="auto",
+      # Exibe a tabela na tela
+      st.dataframe(
+          matriz_visual,
+          use_container_width=True
       )
-      fig_heatmap.update_layout(
-          coloraxis_showscale=False,
-          margin=dict(t=10, b=10, l=10, r=10),
-          xaxis_title="",
-          yaxis_title="",
-      )
-      fig_heatmap.update_xaxes(side="bottom")
-      st.plotly_chart(fig_heatmap, use_container_width=True)
 
       st.markdown("---")
       # ==============================================================
