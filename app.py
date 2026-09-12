@@ -5,6 +5,7 @@ import time
 import urllib.parse
 from zoneinfo import ZoneInfo
 
+import altair as alt
 from google.oauth2.service_account import Credentials
 import gspread
 import pandas as pd
@@ -140,7 +141,6 @@ except Exception as e:
   )
   st.stop()
 
-# --- ATUALIZAÇÃO AQUI: "🧠 Prática Mental" ADICIONADA ---
 tipos_estudo_opcoes = [
     "📖 Leitura / Decodificação",
     "⚙️ Técnica / Mecânica",
@@ -277,7 +277,6 @@ with aba1:
   except Exception as e:
     st.error(f"Erro ao carregar repertório: {e}")
 
-  # Ferramentas musicais
   col_tool1, col_tool2 = st.columns(2)
   with col_tool1:
     st.markdown(gerar_botao_metronomo(), unsafe_allow_html=True)
@@ -809,49 +808,44 @@ with aba3:
       st.markdown("---")
 
       # ==============================================================
-      # MAPA DE CONSTÂNCIA (HEATMAP MODERNO VIA PLOTLY)
+      # MAPA DE CONSTÂNCIA (HEATMAP MODERNO VIA ALTAIR)
       # ==============================================================
       st.write("### 🗺️ 1. Quadro de Constância")
       st.caption(
-          "Acompanhe quais obras estão sendo tocadas e quais estão ficando para"
-          " trás."
+          "Acompanhe a intensidade da sua prática (em minutos) por dia e por obra."
       )
 
-      df_log_valido["Data_Str"] = df_log_valido["Data_DT"].dt.strftime("%d/%m")
-
-      matriz = pd.crosstab(
-          df_log_valido["Obra"],
-          df_log_valido["Data_Str"],
-          values=df_log_valido["Minutos_Num"],
-          aggfunc="sum",
-      ).fillna(0)
-
-      datas_ordenadas = (
-          df_log_valido["Data_DT"].sort_values().dt.strftime("%d/%m").unique()
+      heatmap = alt.Chart(df_log_valido).mark_rect(rx=5, ry=5).encode(
+          x=alt.X(
+              'Data_DT:O',
+              timeUnit='yearmonthdate',
+              title='Data da Prática',
+              axis=alt.Axis(format='%d/%m', labelAngle=-45)
+          ),
+          y=alt.Y(
+              'Obra:N',
+              title=''
+          ),
+          color=alt.Color(
+              'sum(Minutos_Num):Q',
+              title='Minutos',
+              scale=alt.Scale(scheme='greens')
+          ),
+          tooltip=[
+              alt.Tooltip('Data_DT:T', title='Data', format='%d/%m/%Y'),
+              alt.Tooltip('Obra:N', title='Obra'),
+              alt.Tooltip('sum(Minutos_Num):Q', title='Total de Minutos')
+          ]
+      ).properties(
+          height=max(300, len(df_log_valido['Obra'].unique()) * 40)
+      ).configure_view(
+          strokeWidth=0
+      ).configure_axis(
+          grid=False,
+          domain=False
       )
-      matriz = matriz.reindex(columns=datas_ordenadas, fill_value=0)
 
-      try:
-        matriz_num = matriz.map(lambda x: 1 if x > 0 else 0)
-      except AttributeError:
-        matriz_num = matriz.applymap(lambda x: 1 if x > 0 else 0)
-
-      fig_heatmap = px.imshow(
-          matriz_num,
-          labels=dict(x="Data", y="Obra", color="Prática"),
-          x=matriz.columns.tolist(),
-          y=matriz.index.tolist(),
-          color_continuous_scale=[[0, "#F1F5F9"], [1, "#2E7D32"]],
-          aspect="auto",
-      )
-      fig_heatmap.update_layout(
-          coloraxis_showscale=False,
-          margin=dict(t=10, b=10, l=10, r=10),
-          xaxis_title="",
-          yaxis_title="",
-      )
-      fig_heatmap.update_xaxes(side="bottom")
-      st.plotly_chart(fig_heatmap, use_container_width=True)
+      st.altair_chart(heatmap, use_container_width=True)
 
       st.markdown("---")
       # ==============================================================
