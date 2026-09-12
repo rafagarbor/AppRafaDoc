@@ -815,34 +815,33 @@ with aba3:
           "Acompanhe a intensidade da sua prática (em minutos) por dia e por obra."
       )
 
-      heatmap = alt.Chart(df_log_valido).mark_rect(cornerRadius=5).encode(
-          x=alt.X(
-              'Data_DT:O',
-              timeUnit='yearmonthdate',
-              title='Data da Prática',
-              axis=alt.Axis(format='%d/%m', labelAngle=-45)
-          ),
-          y=alt.Y(
-              'Obra:N',
-              title=''
-          ),
-          color=alt.Color(
-              'sum(Minutos_Num):Q',
-              title='Minutos',
-              scale=alt.Scale(scheme='greens')
-          ),
-          tooltip=[
-              alt.Tooltip('Data_DT:T', title='Data', format='%d/%m/%Y'),
-              alt.Tooltip('Obra:N', title='Obra'),
-              alt.Tooltip('sum(Minutos_Num):Q', title='Total de Minutos')
-          ]
-      ).properties(
-          height=max(300, len(df_log_valido['Obra'].unique()) * 40)
-      ).configure_view(
-          strokeWidth=0
-      ).configure_axis(
-          grid=False,
-          domain=False
+      heatmap = (
+          alt.Chart(df_log_valido)
+          .mark_rect(cornerRadius=5)
+          .encode(
+              x=alt.X(
+                  "Data_DT:O",
+                  timeUnit="yearmonthdate",
+                  title="Data da Prática",
+                  axis=alt.Axis(format="%d/%m", labelAngle=-45),
+              ),
+              y=alt.Y("Obra:N", title=""),
+              color=alt.Color(
+                  "sum(Minutos_Num):Q",
+                  title="Minutos",
+                  scale=alt.Scale(scheme="greens"),
+              ),
+              tooltip=[
+                  alt.Tooltip("Data_DT:T", title="Data", format="%d/%m/%Y"),
+                  alt.Tooltip("Obra:N", title="Obra"),
+                  alt.Tooltip("sum(Minutos_Num):Q", title="Total de Minutos"),
+              ],
+          )
+          .properties(
+              height=max(300, len(df_log_valido["Obra"].unique()) * 40)
+          )
+          .configure_view(strokeWidth=0)
+          .configure_axis(grid=False, domain=False)
       )
 
       st.altair_chart(heatmap, use_container_width=True)
@@ -860,15 +859,15 @@ with aba3:
 
       fig_diario = px.bar(
           df_diario,
-          x="Data",
+          x="Data_DT",
           y="Minutos_Num",
           color="Obra",
           title="Minutos Estudados por Dia",
-          labels={"Minutos_Num": "Minutos Estudados", "Data": "Data"},
+          labels={"Minutos_Num": "Minutos Estudados", "Data_DT": "Data"},
           color_discrete_sequence=px.colors.qualitative.Plotly,
           barmode="stack",
       )
-      fig_diario.update_xaxes(type="category")
+      fig_diario.update_xaxes(tickformat="%d/%m/%Y")
       fig_diario.update_layout(
           legend=dict(
               orientation="h", yanchor="bottom", y=-0.5, xanchor="center", x=0.5
@@ -918,15 +917,15 @@ with aba3:
 
         fig_obra_dias = px.bar(
             df_obra_dias,
-            x="Data",
+            x="Data_DT",
             y="Minutos_Num",
             color="Tipo",
             title=f"Dias em que '{obra_filtro}' foi estudada",
-            labels={"Minutos_Num": "Minutos Estudados", "Data": "Data"},
+            labels={"Minutos_Num": "Minutos Estudados", "Data_DT": "Data"},
             color_discrete_sequence=px.colors.qualitative.Set2,
             barmode="stack",
         )
-        fig_obra_dias.update_xaxes(type="category")
+        fig_obra_dias.update_xaxes(tickformat="%d/%m/%Y")
         fig_obra_dias.update_layout(
             legend=dict(
                 orientation="h",
