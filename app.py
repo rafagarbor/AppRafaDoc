@@ -808,14 +808,14 @@ with aba3:
       st.markdown("---")
 
       # ==============================================================
-      # MAPA DE CONSTÂNCIA (HEATMAP MODERNO VIA ALTAIR)
+      # MAPA DE CONSTÂNCIA (HEATMAP MODERNO VIA ALTAIR) - CORRIGIDO
       # ==============================================================
       st.write("### 🗺️ 1. Quadro de Constância")
       st.caption(
           "Acompanhe a intensidade da sua prática (em minutos) por dia e por obra."
       )
 
-      heatmap = alt.Chart(df_log_valido).mark_rect(rx=5, ry=5).encode(
+      heatmap = alt.Chart(df_log_valido).mark_rect(cornerRadius=5).encode(
           x=alt.X(
               'Data_DT:O',
               timeUnit='yearmonthdate',
